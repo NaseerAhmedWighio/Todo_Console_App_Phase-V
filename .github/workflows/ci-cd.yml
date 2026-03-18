@@ -16,7 +16,8 @@ on:
 
 env:
   DOCKERHUB_USERNAME: naseerahmedwighio
-  HUB_IMAGE: todo-console-app-v
+  BACKEND_IMAGE: todo-console-app-v-backend
+  FRONTEND_IMAGE: todo-console-app-v-frontend
 
 jobs:
   build-and-push:
@@ -39,7 +40,7 @@ jobs:
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKERHUB_USERNAME }}/${{ env.HUB_IMAGE }}
+          images: ${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -63,7 +64,7 @@ jobs:
         id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKERHUB_USERNAME }}/${{ env.HUB_IMAGE }}
+          images: ${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -86,5 +87,5 @@ jobs:
       - name: Deployment Summary
         run: |
           echo "✅ Build Complete!"
-          echo "images https://hub.docker.com/r/${{ env.DOCKERHUB_USERNAME }}/${{ env.HUB_IMAGE }}"
-          
+          echo "Backend: https://hub.docker.com/r/${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}"
+          echo "Frontend: https://hub.docker.com/r/${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}"

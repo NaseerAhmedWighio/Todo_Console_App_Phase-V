@@ -1,0 +1,263 @@
+name: Build Infrastructure Images
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'infrastructure/**'
+  schedule:
+    # Rebuild monthly to get latest security updates
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Component to build (all, kafka, zookeeper, redis, dapr-sidecar, dapr-placement, dapr-sentry, dapr-operator)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - kafka
+          - zookeeper
+          - redis
+          - dapr-sidecar
+          - dapr-placement
+          - dapr-sentry
+          - dapr-operator
+
+env:
+  DOCKERHUB_USERNAME: naseerahmedwighio
+
+jobs:
+  build-kafka:
+    name: Build Kafka
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'all' || github.event.inputs.component == 'kafka') || github.event_name != 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Kafka
+        uses: docker/build-push-action@v5
+        with:
+          context: ./infrastructure/kafka
+          file: ./infrastructure/kafka/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/kafka:latest
+            ${{ env.DOCKERHUB_USERNAME }}/kafka:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  build-zookeeper:
+    name: Build Zookeeper
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'all' || github.event.inputs.component == 'zookeeper') || github.event_name != 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Zookeeper
+        uses: docker/build-push-action@v5
+        with:
+          context: ./infrastructure/zookeeper
+          file: ./infrastructure/zookeeper/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/zookeeper:latest
+            ${{ env.DOCKERHUB_USERNAME }}/zookeeper:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  build-redis:
+    name: Build Redis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'all' || github.event.inputs.component == 'redis') || github.event_name != 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Redis
+        uses: docker/build-push-action@v5
+        with:
+          context: ./infrastructure/redis
+          file: ./infrastructure/redis/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/redis:latest
+            ${{ env.DOCKERHUB_USERNAME }}/redis:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  build-dapr-sidecar:
+    name: Build Dapr Sidecar
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'all' || github.event.inputs.component == 'dapr-sidecar') || github.event_name != 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Dapr Sidecar
+        uses: docker/build-push-action@v5
+        with:
+          context: ./infrastructure/dapr-sidecar
+          file: ./infrastructure/dapr-sidecar/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/dapr-sidecar:latest
+            ${{ env.DOCKERHUB_USERNAME }}/dapr-sidecar:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  build-dapr-placement:
+    name: Build Dapr Placement
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'all' || github.event.inputs.component == 'dapr-placement') || github.event_name != 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Dapr Placement
+        uses: docker/build-push-action@v5
+        with:
+          context: ./infrastructure/dapr-placement
+          file: ./infrastructure/dapr-placement/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/dapr-placement:latest
+            ${{ env.DOCKERHUB_USERNAME }}/dapr-placement:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  build-dapr-sentry:
+    name: Build Dapr Sentry
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'all' || github.event.inputs.component == 'dapr-sentry') || github.event_name != 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Dapr Sentry
+        uses: docker/build-push-action@v5
+        with:
+          context: ./infrastructure/dapr-sentry
+          file: ./infrastructure/dapr-sentry/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/dapr-sentry:latest
+            ${{ env.DOCKERHUB_USERNAME }}/dapr-sentry:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  build-dapr-operator:
+    name: Build Dapr Operator
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'all' || github.event.inputs.component == 'dapr-operator') || github.event_name != 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Dapr Operator
+        uses: docker/build-push-action@v5
+        with:
+          context: ./infrastructure/dapr-operator
+          file: ./infrastructure/dapr-operator/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/dapr-operator:latest
+            ${{ env.DOCKERHUB_USERNAME }}/dapr-operator:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [build-kafka, build-zookeeper, build-redis, build-dapr-sidecar, build-dapr-placement, build-dapr-sentry, build-dapr-operator]
+    if: always()
+    steps:
+      - name: Show summary
+        run: |
+          echo "✅ Infrastructure Images Build Complete!"
+          echo ""
+          echo "Available images:"
+          echo "- ${{ env.DOCKERHUB_USERNAME }}/kafka"
+          echo "- ${{ env.DOCKERHUB_USERNAME }}/zookeeper"
+          echo "- ${{ env.DOCKERHUB_USERNAME }}/redis"
+          echo "- ${{ env.DOCKERHUB_USERNAME }}/dapr-sidecar"
+          echo "- ${{ env.DOCKERHUB_USERNAME }}/dapr-placement"
+          echo "- ${{ env.DOCKERHUB_USERNAME }}/dapr-sentry"
+          echo "- ${{ env.DOCKERHUB_USERNAME }}/dapr-operator"
+          echo ""
+          echo "View all: https://hub.docker.com/u/${{ env.DOCKERHUB_USERNAME }}"
