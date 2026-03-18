@@ -1,0 +1,91 @@
+# Local Development Values for Minikube
+# This configuration is optimized for local development with mounted source code
+
+# Configuration for the frontend service
+frontend:
+  # Single replica for local development
+  replicaCount: 1
+  
+  # Using locally built images
+  image:
+    repository: todo-frontend
+    pullPolicy: IfNotPresent  # Use local image if available, otherwise try to pull
+    tag: "latest"
+  
+  # Port configuration for the frontend
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+    
+  # Lower resources for local development
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Configuration for the backend service
+backend:
+  # Single replica for local development
+  replicaCount: 1
+  
+  # Using locally built images
+  image:
+    repository: todo-backend
+    pullPolicy: IfNotPresent  # Use local image if available, otherwise try to pull
+    tag: "latest"
+    
+  # Port configuration for the backend
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+    
+  # Lower resources for local development
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Enable ingress for local development
+ingress:
+  enabled: true
+  className: ""
+  annotations: 
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+  hosts:
+    - host: todo-app.local
+      paths:
+        - path: /
+          pathType: Prefix
+        - path: /api/
+          pathType: Prefix
+  tls: []
+  # Note: For minikube, you might need to add the host to your /etc/hosts file:
+  # $(minikube ip) todo-app.local
+
+# Local development settings
+localDev:
+  enabled: true
+  debugMode: true
+  # Disable mounting local source code for now (Windows/Minikube path issues)
+  mountLocalSources: false
+  localSourcePaths:
+    frontend: "/host_mnt/d/Hackathon/todo-app-phase-IV/frontend"  # Adjust path as needed for Windows/Minikube
+    backend: "/host_mnt/d/Hackathon/todo-app-phase-IV/backend"   # Adjust path as needed for Windows/Minikube
+
+# Disable autoscaling for local development
+autoscaling:
+  enabled: false
+
+# Service account settings
+serviceAccount:
+  create: true
+  automount: true

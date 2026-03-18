@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables for theme colors - used by inline styles */
+:root {
+  /* Light Theme Colors */
+  --background-light: 255, 255, 255;
+  --background-dark: 0, 0, 0;
+  --card-bg-light: 255, 255, 255;
+  --card-bg-dark: 10, 10, 10;
+  --card-secondary-light: 248, 250, 252;
+  --card-secondary-dark: 20, 20, 20;
+  --text-primary-light: 15, 23, 42;
+  --text-primary-dark: 248, 250, 252;
+  --text-secondary-light: 71, 85, 105;
+  --text-secondary-dark: 180, 180, 180;
+  --text-tertiary-light: 148, 163, 184;
+  --text-tertiary-dark: 100, 100, 100;
+  --border-light: 226, 232, 240;
+  --border-dark: 40, 40, 40;
+  
+  /* Accent Colors */
+  --accent-primary: 59, 130, 246;
+  --accent-gradient-start: 59, 130, 246;
+  --accent-gradient-end: 147, 51, 234;
+  
+  /* Glow Effects */
+  --glow-color: 59, 130, 246;
+  --glow-opacity: 0.15;
+}
+
+/* Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  margin: 0;
+  padding: 0;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Gradient utility classes */
+.primary-gradient {
+  background: linear-gradient(135deg, rgb(var(--accent-gradient-start)), rgb(var(--accent-gradient-end)));
+}
+
+/* Glow effect utility classes */
+.glow-effect {
+  box-shadow: 0 0 15px rgba(var(--glow-color), var(--glow-opacity)),
+              0 0 30px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.7)),
+              0 0 45px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.4));
+  transition: all 0.3s ease;
+}
+
+.glow-effect:hover {
+  box-shadow: 0 0 20px rgba(var(--glow-color), calc(var(--glow-opacity) * 1.2)),
+              0 0 40px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.9)),
+              0 0 60px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.6));
+}
+
+.border-glow {
+  border: 0.5px solid rgba(var(--border-light), 0.1);
+  box-shadow: 0 0 10px rgba(var(--border-light), 0.1);
+}
+
+.rounded-card {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Aura Animation Keyframes */
+@keyframes auraFloat {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translate(20px, -30px) scale(1.1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-20px, 20px) scale(0.95);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(30px, 10px) scale(1.05);
+    opacity: 0.35;
+  }
+}
+
+@keyframes auraPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}
+
+.animate-aura-slow {
+  animation: auraFloat 20s ease-in-out infinite;
+}
+
+.animate-aura-medium {
+  animation: auraFloat 15s ease-in-out infinite;
+}
+
+.animate-aura-fast {
+  animation: auraFloat 10s ease-in-out infinite;
+}
+
+.animate-aura-pulse {
+  animation: auraPulse 8s ease-in-out infinite;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--card-secondary-light));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--border-light));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--text-tertiary-light));
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, rgb(var(--accent-gradient-start)), rgb(var(--accent-gradient-end)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Blur header - iOS-style frosted glass */
+.blur-header {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid rgba(var(--border-light), 0.3);
+}
+
+[data-theme="dark"] .blur-header {
+  background-color: rgba(21, 21, 21, 0.72);
+  border-bottom: 1px solid rgba(var(--border-dark), 0.3);
+}
+
+/* Neon glow */
+.neon-glow {
+  box-shadow: none;
+  transition: all 0.3s ease;
+}
+
+.neon-glow:hover {
+  box-shadow: 0 0 15px rgba(var(--glow-color), 0.5),
+              0 0 30px rgba(var(--glow-color), 0.3),
+              0 0 45px rgba(var(--glow-color), 0.15);
+  transform: scale(1.05);
+}

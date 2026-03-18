@@ -1,0 +1,175 @@
+# ===========================================
+# NODE.JS AND FRONTEND
+# ===========================================
+
+# Dependencies
+node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+
+# Production builds
+.next/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache
+.npm
+
+# Yarn
+.yarn-integrity
+.yarn-cache/
+
+# ===========================================
+# PYTHON AND BACKEND
+# ===========================================
+
+# Test files (IGNORED)
+test*.py
+test_*.py
+*_test.py
+tests/
+testing/
+.test/
+
+# Build files (IGNORED)
+build/
+build_*/
+*_build/
+*.build/
+dist/
+*.egg-info/
+*.egg
+MANIFEST
+
+# Batch files (IGNORED)
+*.bat
+start.bat
+run.bat
+build.bat
+test.bat
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+env/
+venv/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+.conda/
+conda-env/
+
+# Testing and coverage
+.pytest_cache/
+.pyre/
+.pytype/
+mypy_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Logs and database
+*.db
+*.db-journal
+*.sqlite3
+
+# ===========================================
+# ENVIRONMENT VARIABLES
+# ===========================================
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+.python-version
+
+# ===========================================
+# IDE AND EDITOR
+# ===========================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# ===========================================
+# OPERATING SYSTEM
+# ===========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ===========================================
+# TEMPORARY FILES
+# ===========================================
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ===========================================
+# HISTORY AND BACKUP
+# ===========================================
+.history/
+*.bak
+*.backup
+
+# ===========================================
+# DOCKER (Keep docker-compose but ignore overrides)
+# ===========================================
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ===========================================
+# LARGE FILES (Optional)
+# ===========================================
+# *.tar
+# *.tar.gz
+# *.zip
+# *.rar
+# *.iso
+# *.dmg

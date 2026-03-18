@@ -1,0 +1,22 @@
+apiVersion: v2
+name: todo-backend
+description: FastAPI Todo Backend with Dapr integration
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - todo
+  - backend
+  - fastapi
+  - python
+  - dapr
+home: https://github.com/your-org/todo-app
+maintainers:
+  - name: Naseer Ahmed
+    email: naseerahmedwighio@gmail.com
+
+dependencies:
+  - name: infrastructure
+    version: "0.1.0"
+    repository: "file://../infrastructure"
+    condition: infrastructure.enabled

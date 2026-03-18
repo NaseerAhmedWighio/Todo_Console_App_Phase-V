@@ -1,0 +1,12 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+spec:
+  type: state.postgresql
+  version: v1
+  metadata:
+  - name: connectionString
+    value: "postgresql://neondb_owner:password@ep-sweet-feather-ahvkyo80-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+  - name: tableName
+    value: dapr_state

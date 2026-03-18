@@ -1,0 +1,33 @@
+{{- if or .Values.autoscaling.enabled .Values.backendAutoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "todo-app-4.fullname" . }}-backend
+  labels:
+    {{- include "todo-app-4.labels" . | nindent 4 }}
+    app: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "todo-app-4.fullname" . }}-backend
+  minReplicas: {{ if .Values.backendAutoscaling.enabled }}{{ .Values.backendAutoscaling.minReplicas }}{{ else }}{{ .Values.autoscaling.minReplicas }}{{ end }}
+  maxReplicas: {{ if .Values.backendAutoscaling.enabled }}{{ .Values.backendAutoscaling.maxReplicas }}{{ else }}{{ .Values.autoscaling.maxReplicas }}{{ end }}
+  metrics:
+    {{- if or (and .Values.backendAutoscaling.enabled .Values.backendAutoscaling.targetCPUUtilizationPercentage) (and (not .Values.backendAutoscaling.enabled) .Values.autoscaling.targetCPUUtilizationPercentage) }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ if .Values.backendAutoscaling.enabled }}{{ .Values.backendAutoscaling.targetCPUUtilizationPercentage }}{{ else }}{{ .Values.autoscaling.targetCPUUtilizationPercentage }}{{ end }}
+    {{- end }}
+    {{- if or (and .Values.backendAutoscaling.enabled .Values.backendAutoscaling.targetMemoryUtilizationPercentage) (and (not .Values.backendAutoscaling.enabled) .Values.autoscaling.targetMemoryUtilizationPercentage) }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ if .Values.backendAutoscaling.enabled }}{{ .Values.backendAutoscaling.targetMemoryUtilizationPercentage }}{{ else }}{{ .Values.autoscaling.targetMemoryUtilizationPercentage }}{{ end }}
+    {{- end }}
+{{- end }}

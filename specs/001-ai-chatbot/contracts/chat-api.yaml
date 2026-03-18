@@ -1,0 +1,77 @@
+openapi: 3.0.0
+info:
+  title: Todo AI Chatbot API
+  description: API for interacting with the AI chatbot to manage tasks
+  version: 1.0.0
+paths:
+  /api/{user_id}/chat:
+    post:
+      summary: Send a message to the AI chatbot
+      description: Processes a natural language message and returns an AI-generated response
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The ID of the authenticated user
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: The natural language message from the user
+                  example: "Add a task to buy groceries tomorrow"
+                conversation_id:
+                  type: string
+                  format: uuid
+                  description: Optional conversation ID to continue an existing conversation
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: AI-generated response to the user's message
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - response
+                  - conversation_id
+                properties:
+                  response:
+                    type: string
+                    description: The AI's response to the user's message
+                    example: "I've added the task 'buy groceries tomorrow' to your list."
+                  conversation_id:
+                    type: string
+                    format: uuid
+                    description: The ID of the conversation
+                    example: "123e4567-e89b-12d3-a456-426614174000"
+                  action_performed:
+                    type: string
+                    description: The action performed by the AI (optional)
+                    example: "task_created"
+        '400':
+          description: Bad request - invalid input
+        '401':
+          description: Unauthorized - invalid or missing JWT token
+        '403':
+          description: Forbidden - user trying to access another user's resources
+        '500':
+          description: Internal server error
+      security:
+        - jwt_auth: []
+components:
+  securitySchemes:
+    jwt_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth

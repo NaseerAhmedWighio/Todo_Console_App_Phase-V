@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "todo-app-4.fullname" . }}-backend
+  labels:
+    {{- include "todo-app-4.labels" . | nindent 4 }}
+    app: backend
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.backend.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "todo-app-4.selectorLabels" . | nindent 6 }}
+      app: backend
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "todo-app-4.labels" . | nindent 8 }}
+        app: backend
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "todo-app-4.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: backend
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            {{- if .Values.localDev.enabled }}
+            exec:
+              command:
+              - sh
+              - -c
+              - "pgrep uvicorn || pgrep python || echo 'Checking if backend is running'"
+            {{- else }}
+            httpGet:
+              path: /health
+              port: http
+            {{- end }}
+          readinessProbe:
+            {{- if .Values.localDev.enabled }}
+            tcpSocket:
+              port: http
+            {{- else }}
+            httpGet:
+              path: /health
+              port: http
+            {{- end }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          env:
+            - name: FRONTEND_URL
+              value: "http://{{ include "todo-app-4.fullname" . }}-frontend:{{ .Values.frontend.service.port }}"
+            - name: DATABASE_URL
+              value: "sqlite:///./todo_app.db"
+            - name: DEBUG
+              value: {{ .Values.localDev.debugMode | quote }}
+          {{- if .Values.localDev.mountLocalSources }}
+          volumeMounts:
+            - name: backend-source
+              mountPath: /app
+              readOnly: false
+          {{- end }}
+      {{- if .Values.localDev.mountLocalSources }}
+      volumes:
+        - name: backend-source
+          hostPath:
+            path: {{ .Values.localDev.localSourcePaths.backend }}
+            type: Directory
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

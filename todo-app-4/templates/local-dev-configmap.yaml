@@ -1,0 +1,14 @@
+{{- if .Values.localDev.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "todo-app-4.fullname" . }}-local-dev
+  labels:
+    {{- include "todo-app-4.labels" . | nindent 4 }}
+data:
+  # Environment-specific configurations for local development
+  LOCAL_DEV_MODE: {{ .Values.localDev.debugMode | quote }}
+  MOUNT_LOCAL_SOURCES: {{ .Values.localDev.mountLocalSources | quote }}
+  FRONTEND_PORT: {{ .Values.frontend.service.port | quote }}
+  BACKEND_PORT: {{ .Values.backend.service.port | quote }}
+{{- end }}

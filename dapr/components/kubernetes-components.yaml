@@ -1,0 +1,47 @@
+# Dapr Kafka Pub/Sub Component for Kubernetes
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: kafka-pubsub
+  namespace: todo-app
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+  - name: brokers
+    value: "todo-kafka-kafka-bootstrap.todo-app.svc.cluster.local:9092"
+  - name: consumerGroup
+    value: "todo-app"
+  - name: publishTopic
+    value: "todo-events"
+  - name: authType
+    value: "none"
+  - name: maxMessageBytes
+    value: "1048576"
+---
+# Dapr State Store Component for Kubernetes
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+  namespace: todo-app
+spec:
+  type: state.postgresql
+  version: v1
+  metadata:
+  - name: connectionString
+    secretKeyRef:
+      name: db-secret
+      key: connection-string
+  - name: tableName
+    value: dapr_state
+---
+# Dapr Kubernetes Secrets Store
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: kubernetes-secrets
+  namespace: todo-app
+spec:
+  type: secretstores.kubernetes
+  version: v1

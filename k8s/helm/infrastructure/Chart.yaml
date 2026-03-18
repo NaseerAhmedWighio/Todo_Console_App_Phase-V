@@ -1,0 +1,16 @@
+apiVersion: v2
+name: todo-app-infrastructure
+description: Infrastructure components for Todo App (Kafka, Redis, Dapr)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - todo
+  - infrastructure
+  - kafka
+  - redis
+  - dapr
+home: https://github.com/your-org/todo-app
+maintainers:
+  - name: Naseer Ahmed
+    email: naseerahmedwighio@gmail.com

@@ -1,0 +1,30 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: messagebus
+  namespace: default
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+  - name: brokers
+    value: kafka:29092
+  - name: authType
+    value: "none"
+  - name: maxMessageBytes
+    value: 1024
+  - name: maxRetries
+    value: 3
+  - name: retryBackOff
+    value: 100ms
+  - name: internalTopic
+    value: todo-events
+  - name: publishTopic
+    value: todo-events
+  - name: consumerGroup
+    value: todo-backend-group
+  - name: initialOffset
+    value: newest
+scopes:
+- todo-backend
+- todo-frontend
