@@ -1,4 +1,4 @@
-name: Build and Push Docker Images
+name: Build, Push and Deploy Docker Images
 
 on:
   push:
@@ -27,6 +27,7 @@ env:
   DOCKERHUB_USERNAME: naseerahmedwighio
   BACKEND_IMAGE: todo-console-app-v-backend
   FRONTEND_IMAGE: todo-console-app-v-frontend
+  REGISTRY: docker.io
 
 jobs:
   lint:
@@ -91,11 +92,13 @@ jobs:
           npm ci
           npm test || exit 0
 
-  build-backend:
+  build-and-push:
     runs-on: ubuntu-latest
     needs: test
     outputs:
-      tag: ${{ steps.meta.outputs.version }}
+      backend-tag: ${{ steps.backend-meta.outputs.version }}
+      frontend-tag: ${{ steps.frontend-meta.outputs.version }}
+      sha-tag: ${{ steps.sha.outputs.sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -107,25 +110,58 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - id: meta
+      # Backend image metadata
+      - id: backend-meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}
+          images: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}
           tags: |
             type=sha
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
 
-      - id: build
+      # Frontend image metadata
+      - id: frontend-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
+
+      # SHA tag for both images
+      - id: sha
+        run: echo "sha=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      # Build and push backend
+      - id: build-backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ steps.sha.outputs.sha }}
+            ${{ steps.backend-meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          platforms: linux/amd64
 
+      # Build and push frontend
+      - id: build-frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ steps.sha.outputs.sha }}
+            ${{ steps.frontend-meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      # Generate SBOM for backend
       - uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.version }}
+          image: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ steps.sha.outputs.sha }}
           format: spdx-json
           output-file: backend-sbom.spdx.json
 
@@ -134,41 +170,10 @@ jobs:
           name: backend-sbom
           path: backend-sbom.spdx.json
 
-  build-frontend:
-    runs-on: ubuntu-latest
-    needs: test
-    outputs:
-      tag: ${{ steps.meta.outputs.version }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}
-          tags: |
-            type=sha
-
-      - id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
+      # Generate SBOM for frontend
       - uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.version }}
+          image: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ steps.sha.outputs.sha }}
           format: spdx-json
           output-file: frontend-sbom.spdx.json
 
@@ -179,30 +184,62 @@ jobs:
 
   security-scan:
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]
+    needs: build-and-push
     steps:
-      - uses: aquasecurity/trivy-action@master
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ needs.build-backend.outputs.tag }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ needs.build-and-push.outputs.sha-tag }}
+          format: 'sarif'
+          output: 'backend-trivy.sarif'
 
-      - uses: aquasecurity/trivy-action@master
+      - name: Upload backend scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
         with:
-          image-ref: ${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ needs.build-frontend.outputs.tag }}
+          sarif_file: 'backend-trivy.sarif'
+
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ needs.build-and-push.outputs.sha-tag }}
+          format: 'sarif'
+          output: 'frontend-trivy.sarif'
+
+      - name: Upload frontend scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'frontend-trivy.sarif'
 
   deploy-server:
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]
+    needs: build-and-push
     if: github.ref == 'refs/heads/master'
+    environment:
+      name: production
+      url: http://${{ secrets.SERVER_IP }}:3000
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy docker-compose files to server
+      - name: Copy docker-compose.yml to server
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
-          source: "docker-compose.backend.yml,docker-compose.frontend.yml"
+          source: "docker-compose.yml"
+          target: "/home/opc/app"
+          strip_components: 1
+
+      - name: Copy .env.example to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          source: ".env.example"
           target: "/home/opc/app"
           strip_components: 1
 
@@ -230,37 +267,59 @@ jobs:
             FRONTEND_URL=http://${{ secrets.SERVER_IP }}:3000
             API_PROVIDER=${{ secrets.API_PROVIDER || 'openrouter' }}
             CHAT_MODEL=${{ secrets.CHAT_MODEL || 'meta-llama/llama-3.2-3b-instruct:free' }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             EOF
 
             # Login to Docker Hub
+            echo "🔐 Logging in to Docker Hub..."
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ env.DOCKERHUB_USERNAME }} --password-stdin
 
             # Pull latest images
-            docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:latest
-            docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:latest
+            echo "📥 Pulling latest images..."
+            docker pull ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:latest
+            docker pull ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:latest
 
             # Stop existing containers
-            docker compose -f docker-compose.backend.yml down
+            echo "🛑 Stopping existing containers..."
+            docker compose down
 
-            # Start all services (backend + frontend + infrastructure)
-            docker compose -f docker-compose.backend.yml up -d
+            # Start all services
+            echo "▶️  Starting all services..."
+            docker compose up -d
 
             # Wait for services to be healthy
             echo "⏳ Waiting for services to start..."
             sleep 45
 
             # Show running containers
+            echo "📊 Running containers:"
             docker ps -a
 
-            # Cleanup
+            # Show logs for debugging
+            echo "📋 Recent logs:"
+            docker compose logs --tail=20
+
+            # Cleanup old images
+            echo "🧹 Cleaning up old images..."
             docker image prune -f
+
+            # Logout from Docker Hub
             docker logout
 
             echo "✅ Deployment completed successfully!"
+            echo "🌐 Frontend: http://${{ secrets.SERVER_IP }}:3000"
+            echo "🔌 Backend: http://${{ secrets.SERVER_IP }}:7860"
 
   notify:
     runs-on: ubuntu-latest
     needs: [deploy-server]
     if: always()
     steps:
-      - run: echo "Pipeline finished 🚀"
+      - name: Notify deployment status
+        run: |
+          if [ "${{ needs.deploy-server.result }}" == "success" ]; then
+            echo "✅ Deployment succeeded! 🚀"
+          else
+            echo "❌ Deployment failed! Check logs for details."
+            exit 1
+          fi

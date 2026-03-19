@@ -1,18 +1,26 @@
 # Production Docker Compose - Todo App Phase V
 # Uses Neon Serverless PostgreSQL, Kafka, and Redis
-# Optimized for smaller image sizes and reduced storage
-# Usage: docker-compose up -d
+# Supports both local build and DockerHub images
+# 
+# Local Development: docker-compose up --build
+# Production Deploy: docker-compose pull && docker-compose up -d
+# 
+# Images: naseerahmedwighio/todo-console-app-v-backend
+#         naseerahmedwighio/todo-console-app-v-frontend
 
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        - PIP_DEFAULT_TIMEOUT=100
-        - PIP_RETRIES=5
-      platforms:
-        - linux/amd64
+    # Production: uses pre-built image from DockerHub
+    image: naseerahmedwighio/todo-console-app-v-backend:latest
+    # Local dev: uncomment build section to build locally
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
+    #   args:
+    #     - PIP_DEFAULT_TIMEOUT=100
+    #     - PIP_RETRIES=5
+    #   platforms:
+    #     - linux/amd64
     container_name: todo-backend
     ports:
       - "7860:7860"
@@ -52,17 +60,20 @@ services:
       - todo-network
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - NPM_CONFIG_RETRY=5
-        - NPM_CONFIG_FETCH_RETRIES=5
-        - NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=10000
-        - NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=60000
-        - NEXT_PUBLIC_API_BASE_URL=http://localhost:7860
-      platforms:
-        - linux/amd64
+    # Production: uses pre-built image from DockerHub
+    image: naseerahmedwighio/todo-console-app-v-frontend:latest
+    # Local dev: uncomment build section to build locally
+    # build:
+    #   context: ./frontend
+    #   dockerfile: Dockerfile
+    #   args:
+    #     - NPM_CONFIG_RETRY=5
+    #     - NPM_CONFIG_FETCH_RETRIES=5
+    #     - NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=10000
+    #     - NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=60000
+    #     - NEXT_PUBLIC_API_BASE_URL=http://localhost:7860
+    #   platforms:
+    #     - linux/amd64
     container_name: todo-frontend
     ports:
       - "3000:3000"
