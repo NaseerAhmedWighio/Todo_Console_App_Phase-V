@@ -69,7 +69,7 @@ jobs:
 
       # ✅ FIXED: correct condition
       - name: Alternative: Use provided kubeconfig
-        if: ${{ failure() }}
+        if: failure()
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
