@@ -1,13 +1,15 @@
 """
 Verify the todos table schema
 """
+
 from sqlmodel import Session, text
+
 from app.database.session import engine
 
 
 def check_schema():
     """Check the todos table schema"""
-    
+
     with Session(engine) as session:
         result = session.exec(text("""
             SELECT column_name, data_type, is_nullable, column_default 
@@ -15,11 +17,11 @@ def check_schema():
             WHERE table_name = 'todos' 
             ORDER BY ordinal_position
         """))
-        
+
         print("\n=== Todos Table Schema ===")
         for row in result:
             print(f"  {row[0]}: {row[1]} (nullable: {row[2]}, default: {row[3]})")
-        
+
         # Also check recurring_tasks table exists
         try:
             result = session.exec(text("""

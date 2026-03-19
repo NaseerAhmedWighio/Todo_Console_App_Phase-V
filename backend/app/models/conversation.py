@@ -1,13 +1,15 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import List, Optional
+
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class Conversation(SQLModel, table=True):
     """
     Conversation model to store chat conversation data.
     """
+
     __tablename__ = "conversations"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

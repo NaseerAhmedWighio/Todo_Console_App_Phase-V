@@ -1,7 +1,8 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, TYPE_CHECKING
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
+
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .todo import TaskTag
@@ -39,6 +40,6 @@ class TagResponse(TagBase):
     user_id: uuid.UUID
     created_at: datetime
     usage_count: Optional[int] = None  # Computed field for API response
-    
+
     class Config:
         from_attributes = True

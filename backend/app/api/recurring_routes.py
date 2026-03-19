@@ -1,13 +1,14 @@
+import uuid
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-from typing import List, Optional
+
+from ..api.todo_routes import get_current_user
 from ..database.session import get_session
-from ..models.recurring_task import RecurringTask, RecurringTaskCreate, RecurringTaskUpdate, RecurringTaskResponse
+from ..models.recurring_task import RecurringTask, RecurringTaskCreate, RecurringTaskResponse, RecurringTaskUpdate
 from ..models.todo import Todo
 from ..models.user import User
-from ..api.todo_routes import get_current_user
-import uuid
-from datetime import datetime
 
 router = APIRouter(prefix="/api/v1/recurring", tags=["recurring-tasks"])
 
@@ -17,7 +18,7 @@ def create_recurring_task(
     task_id: str,
     recurring_data: RecurringTaskCreate,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ) -> RecurringTaskResponse:
     """Configure a task as recurring"""
     try:
@@ -38,10 +39,10 @@ def create_recurring_task(
         by_weekday=recurring_data.by_weekday,
         by_monthday=recurring_data.by_monthday,
         by_month=recurring_data.by_month,
-        end_condition=recurring_data.end_condition or 'never',
+        end_condition=recurring_data.end_condition or "never",
         end_occurrences=recurring_data.end_occurrences,
         end_date=recurring_data.end_date,
-        is_active=True
+        is_active=True,
     )
 
     # Mark the base task as recurring
@@ -56,9 +57,7 @@ def create_recurring_task(
 
 @router.get("/tasks/{task_id}", response_model=RecurringTaskResponse)
 def get_recurring_task(
-    task_id: str,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    task_id: str, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)
 ) -> RecurringTaskResponse:
     """Get recurring configuration for a task"""
     try:
@@ -86,7 +85,7 @@ def update_recurring_task(
     task_id: str,
     recurring_update: RecurringTaskUpdate,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ) -> RecurringTaskResponse:
     """Update recurring configuration for a task"""
     try:
@@ -124,7 +123,7 @@ def delete_recurring_task(
     task_id: str,
     delete_all_instances: bool = False,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     """Remove recurring configuration from a task"""
     try:
@@ -166,13 +165,11 @@ def delete_recurring_task(
 
 @router.get("/", response_model=List[RecurringTaskResponse])
 def list_recurring_tasks(
-    active_only: bool = True,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    active_only: bool = True, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)
 ) -> List[RecurringTaskResponse]:
     """List all recurring tasks for the current user"""
-    statement = select(RecurringTask).join(Todo, RecurringTask.task_id == Todo.id).where(
-        Todo.user_id == current_user.id
+    statement = (
+        select(RecurringTask).join(Todo, RecurringTask.task_id == Todo.id).where(Todo.user_id == current_user.id)
     )
 
     if active_only:

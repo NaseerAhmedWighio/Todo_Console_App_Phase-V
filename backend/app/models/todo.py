@@ -1,12 +1,13 @@
-from sqlmodel import SQLModel, Field, Column, DateTime, Relationship
-from typing import Optional, TYPE_CHECKING
-from datetime import datetime, timezone
 import uuid
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Optional
+
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from .tag import TaskTag
-    from .reminder import Reminder
     from .recurring_task import RecurringTask
+    from .reminder import Reminder
+    from .tag import TaskTag
 
 
 def get_utc_now() -> datetime:
@@ -34,7 +35,7 @@ class Todo(TodoBase, table=True):
     timezone: Optional[str] = Field(default="UTC", max_length=50)
     is_recurring: bool = Field(default=False, index=True)
     recurring_task_id: Optional[uuid.UUID] = Field(default=None, foreign_key="recurring_tasks.id", index=True)
-    
+
     # Additional fields that may exist in database
     recurrence_pattern: Optional[str] = Field(default="{}", max_length=500)
     reminder_settings: Optional[str] = Field(default="{}", max_length=1000)
@@ -45,10 +46,7 @@ class Todo(TodoBase, table=True):
     task_tags: Optional[list["TaskTag"]] = Relationship(back_populates="task", sa_relationship_kwargs={"cascade": "all, delete-orphan"})  # type: ignore
     reminders: Optional[list["Reminder"]] = Relationship(back_populates="task", sa_relationship_kwargs={"cascade": "all, delete-orphan"})  # type: ignore
     recurring_task: Optional["RecurringTask"] = Relationship(
-        back_populates="task",
-        sa_relationship_kwargs={
-            "primaryjoin": "RecurringTask.task_id == Todo.id"
-        }
+        back_populates="task", sa_relationship_kwargs={"primaryjoin": "RecurringTask.task_id == Todo.id"}
     )  # type: ignore
 
 
@@ -69,6 +67,6 @@ class TodoResponse(TodoBase):
     user_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True

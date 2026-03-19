@@ -1,10 +1,11 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional
-from datetime import datetime, timezone
-import uuid
-import bcrypt
-from sqlalchemy import Column, JSON
 import re
+import uuid
+from datetime import datetime, timezone
+from typing import Optional
+
+import bcrypt
+from sqlalchemy import JSON, Column
+from sqlmodel import Field, Relationship, SQLModel
 
 
 def get_utc_now() -> datetime:
@@ -22,30 +23,30 @@ def is_google_email(email: str) -> bool:
     """
     if not email:
         return False
-    
+
     email_lower = email.lower().strip()
-    
+
     # Check for standard Google email domains
     google_domains = [
-        '@gmail.com',
-        '@googlemail.com',
+        "@gmail.com",
+        "@googlemail.com",
     ]
-    
+
     for domain in google_domains:
         if email_lower.endswith(domain):
             return True
-    
+
     # Optional: Check for Google Workspace domains
     # You can add your organization's Google Workspace domain here
     # Example: if email_lower.endswith('@yourcompany.com'):
     #     return True
-    
+
     return False
 
 
 def validate_email_format(email: str) -> bool:
     """Validate email format using regex"""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(pattern, email))
 
 
@@ -66,7 +67,7 @@ class User(UserBase, table=True):
     timezone: str = Field(default="UTC", max_length=50)
     notification_preferences: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     default_task_priority: str = Field(default="medium", max_length=20)
-    
+
     # Email verification
     is_email_verified: bool = Field(default=False)
     email_verified_at: Optional[datetime] = Field(default=None)
@@ -110,9 +111,9 @@ class UserResponse(UserBase):
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt"""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))

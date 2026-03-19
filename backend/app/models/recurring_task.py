@@ -1,7 +1,8 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, TYPE_CHECKING
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
+
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .todo import Todo
@@ -31,10 +32,7 @@ class RecurringTask(RecurringTaskBase, table=True):
 
     # Relationships
     task: Optional["Todo"] = Relationship(
-        back_populates="recurring_task",
-        sa_relationship_kwargs={
-            "primaryjoin": "RecurringTask.task_id == Todo.id"
-        }
+        back_populates="recurring_task", sa_relationship_kwargs={"primaryjoin": "RecurringTask.task_id == Todo.id"}
     )  # type: ignore
 
 

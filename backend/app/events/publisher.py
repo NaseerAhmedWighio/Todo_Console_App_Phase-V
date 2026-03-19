@@ -5,12 +5,13 @@ Publishes domain events to Kafka topics via Dapr Pub/Sub
 
 import asyncio
 import json
-from typing import Dict, Any, Optional
+import logging
 from datetime import datetime
+from typing import Any, Dict, Optional
+
+import httpx
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
-import logging
-import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -26,27 +27,28 @@ class EventPublisher:
         self.producer = None
         self._initialized = False
         self._use_dapr = True  # Prefer Dapr Pub/Sub
-    
+
     def _ensure_initialized(self):
         """Lazy initialization of Kafka producer"""
         if not self._initialized:
             try:
                 self.producer = KafkaProducer(
                     bootstrap_servers=self.bootstrap_servers,
-                    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-                    key_serializer=lambda k: k.encode('utf-8') if k else None,
-                    acks='all',  # Wait for all replicas to acknowledge
+                    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                    key_serializer=lambda k: k.encode("utf-8") if k else None,
+                    acks="all",  # Wait for all replicas to acknowledge
                     retries=3,
                     retry_backoff_ms=100,
-                    max_in_flight_requests_per_connection=1  # Ensure idempotence
+                    max_in_flight_requests_per_connection=1,  # Ensure idempotence
                 )
                 self._initialized = True
             except Exception as e:
                 logger.error(f"Failed to initialize Kafka producer: {e}")
                 raise
-    
-    async def publish(self, topic: str, event_type: str, payload: Dict[str, Any],
-                     user_id: str, aggregate_id: str = None) -> bool:
+
+    async def publish(
+        self, topic: str, event_type: str, payload: Dict[str, Any], user_id: str, aggregate_id: str = None
+    ) -> bool:
         """
         Publish an event to Kafka topic via Dapr Pub/Sub
 
@@ -61,12 +63,12 @@ class EventPublisher:
             True if successful
         """
         message = {
-            'event_type': event_type,
-            'payload': payload,
-            'user_id': user_id,
-            'aggregate_id': aggregate_id,
-            'timestamp': datetime.utcnow().isoformat(),
-            'schema_version': '1.0'
+            "event_type": event_type,
+            "payload": payload,
+            "user_id": user_id,
+            "aggregate_id": aggregate_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "schema_version": "1.0",
         }
 
         # Try Dapr Pub/Sub first
@@ -78,7 +80,9 @@ class EventPublisher:
                     if response.status_code == 200 or response.status_code == 204:
                         logger.debug(f"Event published to {topic} via Dapr")
                         return True
-                    logger.warning(f"Dapr publish failed with status {response.status_code}, falling back to direct Kafka")
+                    logger.warning(
+                        f"Dapr publish failed with status {response.status_code}, falling back to direct Kafka"
+                    )
             except Exception as e:
                 logger.warning(f"Dapr publish failed: {e}, falling back to direct Kafka")
 
@@ -87,12 +91,7 @@ class EventPublisher:
 
         try:
             # Use asyncio.to_thread() for non-blocking send
-            future = await asyncio.to_thread(
-                self.producer.send,
-                topic,
-                key=user_id,
-                value=message
-            )
+            future = await asyncio.to_thread(self.producer.send, topic, key=user_id, value=message)
 
             # Wait for send to complete (with timeout)
             record_metadata = future.get(timeout=10)
@@ -111,47 +110,42 @@ class EventPublisher:
         except Exception as e:
             logger.error(f"Unexpected error publishing event: {e}")
             return False
-    
+
     async def publish_batch(self, topic: str, events: list) -> bool:
         """
         Publish multiple events to the same topic
-        
+
         Args:
             topic: Kafka topic name
             events: List of event dicts with event_type, payload, user_id, aggregate_id
-            
+
         Returns:
             True if all events were published successfully
         """
         self._ensure_initialized()
-        
+
         try:
             for event_data in events:
                 message = {
-                    'event_type': event_data['event_type'],
-                    'payload': event_data['payload'],
-                    'user_id': event_data['user_id'],
-                    'aggregate_id': event_data.get('aggregate_id'),
-                    'timestamp': datetime.utcnow().isoformat(),
-                    'schema_version': '1.0'
+                    "event_type": event_data["event_type"],
+                    "payload": event_data["payload"],
+                    "user_id": event_data["user_id"],
+                    "aggregate_id": event_data.get("aggregate_id"),
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "schema_version": "1.0",
                 }
-                
-                await asyncio.to_thread(
-                    self.producer.send,
-                    topic,
-                    key=event_data['user_id'],
-                    value=message
-                )
-            
+
+                await asyncio.to_thread(self.producer.send, topic, key=event_data["user_id"], value=message)
+
             # Flush all pending messages
             await asyncio.to_thread(self.producer.flush)
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to publish batch events: {e}")
             return False
-    
+
     def close(self):
         """Close the Kafka producer"""
         if self.producer:

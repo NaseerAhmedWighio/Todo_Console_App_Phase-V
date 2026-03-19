@@ -1,20 +1,12 @@
-from sqlmodel import create_engine, Session, SQLModel
-from sqlalchemy.pool import StaticPool, NullPool
-from typing import Generator
 import os
 import sys
+from typing import Generator
+
 from dotenv import load_dotenv
+from sqlalchemy.pool import NullPool
+from sqlmodel import Session, SQLModel, create_engine
 
 # Import models to register them with SQLModel metadata
-from ..models.todo import Todo
-from ..models.user import User
-from ..models.conversation import Conversation
-from ..models.message import Message
-from ..models.recurring_task import RecurringTask
-from ..models.reminder import Reminder
-from ..models.tag import Tag
-from ..models.task_tag import TaskTag
-from ..models.event import DomainEvent
 
 load_dotenv()
 

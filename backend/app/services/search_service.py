@@ -3,13 +3,13 @@ Search Service
 Full-text search for tasks using PostgreSQL tsvector
 """
 
-from typing import List, Optional, Dict, Any
-from sqlmodel import Session, select, text
-from datetime import datetime
-import uuid
 import logging
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from ..models.todo import Todo
+from sqlmodel import Session, select, text
+
 from ..models.task_tag import TaskTag
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class SearchService:
         due_date_from: Optional[datetime] = None,
         due_date_to: Optional[datetime] = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """
         Full-text search across tasks
@@ -78,49 +78,47 @@ class SearchService:
             if isinstance(status, bool):
                 sql_status = status
             elif isinstance(status, str):
-                sql_status = status.lower() == 'true'
+                sql_status = status.lower() == "true"
             else:
                 sql_status = bool(status)
 
         params = {
-            'user_id': user_id,
-            'query': query or '',
-            'priority': priority,
-            'status': sql_status,
-            'tag_id': tag_id,
-            'due_date_from': due_date_from,
-            'due_date_to': due_date_to,
-            'limit': limit,
-            'offset': offset
+            "user_id": user_id,
+            "query": query or "",
+            "priority": priority,
+            "status": sql_status,
+            "tag_id": tag_id,
+            "due_date_from": due_date_from,
+            "due_date_to": due_date_to,
+            "limit": limit,
+            "offset": offset,
         }
 
         results = self.session.execute(search_sql, params)
         tasks = []
         for row in results:
             # Get tags for this task
-            task_tags = self.session.exec(
-                select(TaskTag).where(TaskTag.task_id == row.id)
-            ).all()
-            
+            task_tags = self.session.exec(select(TaskTag).where(TaskTag.task_id == row.id)).all()
+
             task_dict = {
-                'id': str(row.id),
-                'title': row.title,
-                'description': row.description,
-                'is_completed': row.is_completed,
-                'priority': row.priority,
-                'due_date': row.due_date.isoformat() if row.due_date else None,
-                'created_at': row.created_at.isoformat(),
-                'updated_at': row.updated_at.isoformat(),
-                'task_tags': [
+                "id": str(row.id),
+                "title": row.title,
+                "description": row.description,
+                "is_completed": row.is_completed,
+                "priority": row.priority,
+                "due_date": row.due_date.isoformat() if row.due_date else None,
+                "created_at": row.created_at.isoformat(),
+                "updated_at": row.updated_at.isoformat(),
+                "task_tags": [
                     {
-                        'tag': {
-                            'id': str(tt.tag.id),
-                            'name': tt.tag.name,
-                            'color': tt.tag.color,
+                        "tag": {
+                            "id": str(tt.tag.id),
+                            "name": tt.tag.name,
+                            "color": tt.tag.color,
                         }
                     }
                     for tt in task_tags
-                ]
+                ],
             }
             tasks.append(task_dict)
 
@@ -138,7 +136,7 @@ class SearchService:
         sort_by: str = "created_at",
         sort_order: str = "desc",
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """
         Filter tasks without full-text search
@@ -186,8 +184,8 @@ class SearchService:
         """)
 
         # Apply sort order
-        if sort_order == 'desc':
-            filter_sql = text(str(filter_sql).replace('ASC', 'DESC'))
+        if sort_order == "desc":
+            filter_sql = text(str(filter_sql).replace("ASC", "DESC"))
 
         # Convert status properly for SQL
         sql_status = None
@@ -195,49 +193,47 @@ class SearchService:
             if isinstance(status, bool):
                 sql_status = status
             elif isinstance(status, str):
-                sql_status = status.lower() == 'true'
+                sql_status = status.lower() == "true"
             else:
                 sql_status = bool(status)
 
         params = {
-            'user_id': user_id,
-            'priority': priority,
-            'status': sql_status,
-            'tag_id': tag_id,
-            'due_date_from': due_date_from,
-            'due_date_to': due_date_to,
-            'sort_by': sort_by,
-            'limit': limit,
-            'offset': offset
+            "user_id": user_id,
+            "priority": priority,
+            "status": sql_status,
+            "tag_id": tag_id,
+            "due_date_from": due_date_from,
+            "due_date_to": due_date_to,
+            "sort_by": sort_by,
+            "limit": limit,
+            "offset": offset,
         }
 
         results = self.session.execute(filter_sql, params)
         tasks = []
         for row in results:
             # Get tags for this task
-            task_tags = self.session.exec(
-                select(TaskTag).where(TaskTag.task_id == row.id)
-            ).all()
-            
+            task_tags = self.session.exec(select(TaskTag).where(TaskTag.task_id == row.id)).all()
+
             task_dict = {
-                'id': str(row.id),
-                'title': row.title,
-                'description': row.description,
-                'is_completed': row.is_completed,
-                'priority': row.priority,
-                'due_date': row.due_date.isoformat() if row.due_date else None,
-                'created_at': row.created_at.isoformat(),
-                'updated_at': row.updated_at.isoformat(),
-                'task_tags': [
+                "id": str(row.id),
+                "title": row.title,
+                "description": row.description,
+                "is_completed": row.is_completed,
+                "priority": row.priority,
+                "due_date": row.due_date.isoformat() if row.due_date else None,
+                "created_at": row.created_at.isoformat(),
+                "updated_at": row.updated_at.isoformat(),
+                "task_tags": [
                     {
-                        'tag': {
-                            'id': str(tt.tag.id),
-                            'name': tt.tag.name,
-                            'color': tt.tag.color,
+                        "tag": {
+                            "id": str(tt.tag.id),
+                            "name": tt.tag.name,
+                            "color": tt.tag.color,
                         }
                     }
                     for tt in task_tags
-                ]
+                ],
             }
             tasks.append(task_dict)
 
@@ -259,7 +255,7 @@ class SearchService:
             WHERE id = :task_id
         """)
 
-        self.session.execute(update_sql, {'task_id': task_id})
+        self.session.execute(update_sql, {"task_id": task_id})
         self.session.commit()
         logger.debug(f"Updated search vector for task {task_id}")
 

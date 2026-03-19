@@ -1,22 +1,25 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import JSONResponse
+import asyncio
+import json
+import logging
+import traceback
 from contextlib import asynccontextmanager
-from app.database.session import create_db_and_tables
-from app.api.todo_routes import router as todo_router
-from app.api.auth_routes import router as auth_router
-from app.api.chat_routes import router as chat_router, limiter as chat_limiter
-from app.api.tag_routes import router as tag_router
-from app.api.search_routes import router as search_router
-from app.api.recurring_routes import router as recurring_router
-from app.api.reminder_routes import router as reminder_router
-from app.api.jobs_routes import router as jobs_router
+
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-import traceback
-import asyncio
-import logging
-import json
+
+from app.api.auth_routes import router as auth_router
+from app.api.chat_routes import limiter as chat_limiter
+from app.api.chat_routes import router as chat_router
+from app.api.jobs_routes import router as jobs_router
+from app.api.recurring_routes import router as recurring_router
+from app.api.reminder_routes import router as reminder_router
+from app.api.search_routes import router as search_router
+from app.api.tag_routes import router as tag_router
+from app.api.todo_routes import router as todo_router
+from app.database.session import create_db_and_tables
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +59,10 @@ def create_app():
 
     # Set the limiter on app.state for routes to use
     app.state.limiter = chat_limiter
-    app.add_exception_handler(RateLimitExceeded, lambda r, e: JSONResponse(
-        status_code=429,
-        content={"detail": "Rate limit exceeded. Please try again later."}
-    ))
+    app.add_exception_handler(
+        RateLimitExceeded,
+        lambda r, e: JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Please try again later."}),
+    )
     app.add_middleware(SlowAPIMiddleware)
 
     # Include API routes
@@ -77,6 +80,7 @@ def create_app():
     async def websocket_endpoint(websocket: WebSocket, user_id: str):
         """WebSocket endpoint for real-time updates with heartbeat support"""
         from app.api.websocket_manager import manager as websocket_manager
+
         await websocket_manager.connect(websocket, user_id)
         try:
             while True:
@@ -116,7 +120,7 @@ def create_app():
             headers={
                 "Access-Control-Allow-Origin": "http://localhost:3000",
                 "Access-Control-Allow-Credentials": "true",
-            }
+            },
         )
 
     return app
@@ -127,4 +131,5 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=7860)

@@ -1,22 +1,37 @@
-[project]
-name = "todo-backend"
-version = "0.1.0"
-description = "Todo API Backend with FastAPI and AI Agent"
-readme = "README.md"
-requires-python = ">=3.11"
-dependencies = [
-    "fastapi>=0.128.0",
-    "psycopg2-binary>=2.9.11",
-    "pydantic>=2.12.5",
-    "python-dotenv>=1.2.1",
-    "sqlmodel>=0.0.31",
-    "uuid>=1.30",
-    "openai>=1.57.4",
-    "python-multipart>=0.0.20",
-    "slowapi>=0.1.9",
-    "bcrypt>=4.0.1",
-    "uvicorn[standard]>=0.34.0",
-    "openai-agents>=0.6.5",
+[tool.black]
+line-length = 120
+target-version = ['py311']
+exclude = '''
+/(
+    \.venv
+    | venv
+    | __pycache__
+    | \.git
+    | node_modules
+    | dist
+    | build
+)/
+'''
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".git",
+    "node_modules",
+    "dist",
+    "build",
 ]
 
-[tool.uv]
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = [
+    "E501",  # Line length handled by black
+    "E712",  # Allow equality comparisons to True/False (SQLModel requirement)
+    "E722",  # Allow bare except (for simple error handling)
+    "E402",  # Allow module level imports (for lazy imports)
+    "F821",  # Allow forward references in type hints
+]

@@ -1,5 +1,7 @@
 """Debug OpenAPI schema issue"""
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from app.api.todo_routes import TodoCreate, TodoResponse
@@ -31,7 +33,10 @@ for field_name, field_info in Todo.model_fields.items():
     if field_info.default is not None and callable(field_info.default):
         print(f"  {field_name}: default={field_info.default} (callable)")
     if field_info.default_factory is not None:
-        print(f"  {field_name}: default_factory={field_info.default_factory} (callable: {callable(field_info.default_factory)})")
+        print(
+            f"  {field_name}: default_factory={field_info.default_factory} (callable: {callable(field_info.default_factory)})"
+        )
         import asyncio
+
         if asyncio.iscoroutinefunction(field_info.default_factory):
             print("    *** THIS IS A COROUTINE! ***")

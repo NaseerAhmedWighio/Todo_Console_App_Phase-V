@@ -3,9 +3,10 @@ Dapr Secrets Client
 Retrieves secrets from Dapr secret stores (Kubernetes Secrets, Azure Key Vault, etc.)
 """
 
-import httpx
-from typing import Dict, Optional
 import logging
+from typing import Dict, Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 

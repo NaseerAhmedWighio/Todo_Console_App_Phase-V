@@ -3,12 +3,13 @@ Tag Service
 Business logic for tag operations
 """
 
-from typing import List, Optional
-from sqlmodel import Session, select
-import uuid
 import logging
+import uuid
+from typing import List, Optional
 
-from ..models.tag import Tag, TagCreate, TagUpdate
+from sqlmodel import Session, select
+
+from ..models.tag import Tag, TagUpdate
 from ..models.task_tag import TaskTag
 from ..models.todo import Todo
 
@@ -37,12 +38,7 @@ class TagService:
             ValueError: If tag with same name already exists for user
         """
         # Check for duplicate (case-insensitive)
-        existing = self.session.exec(
-            select(Tag).where(
-                Tag.user_id == user_id,
-                Tag.name.ilike(name)
-            )
-        ).first()
+        existing = self.session.exec(select(Tag).where(Tag.user_id == user_id, Tag.name.ilike(name))).first()
 
         if existing:
             raise ValueError(f'Tag "{name}" already exists')
@@ -65,16 +61,12 @@ class TagService:
             List of Tags with usage_count
         """
         # Get all tags for user
-        tags = self.session.exec(
-            select(Tag).where(Tag.user_id == user_id).order_by(Tag.name)
-        ).all()
+        tags = self.session.exec(select(Tag).where(Tag.user_id == user_id).order_by(Tag.name)).all()
 
         # Calculate usage count for each tag
         tags_with_count = []
         for tag in tags:
-            usage_count = self.session.exec(
-                select(TaskTag).where(TaskTag.tag_id == tag.id)
-            ).all()
+            usage_count = self.session.exec(select(TaskTag).where(TaskTag.tag_id == tag.id)).all()
             tag.usage_count = len(usage_count)  # type: ignore
             tags_with_count.append(tag)
 
@@ -167,10 +159,7 @@ class TagService:
 
         # Check if already assigned
         existing = self.session.exec(
-            select(TaskTag).where(
-                TaskTag.task_id == task_id,
-                TaskTag.tag_id == tag_id
-            )
+            select(TaskTag).where(TaskTag.task_id == task_id, TaskTag.tag_id == tag_id)
         ).first()
 
         if existing:
@@ -195,10 +184,7 @@ class TagService:
             True if unassigned, False if not found
         """
         assignment = self.session.exec(
-            select(TaskTag).where(
-                TaskTag.task_id == task_id,
-                TaskTag.tag_id == tag_id
-            )
+            select(TaskTag).where(TaskTag.task_id == task_id, TaskTag.tag_id == tag_id)
         ).first()
 
         if not assignment:
@@ -226,20 +212,13 @@ class TagService:
             List of Tasks
         """
         # Get all task_ids with this tag
-        task_tags = self.session.exec(
-            select(TaskTag.task_id).where(TaskTag.tag_id == tag_id)
-        ).all()
+        task_tags = self.session.exec(select(TaskTag.task_id).where(TaskTag.tag_id == tag_id)).all()
 
         if not task_tags:
             return []
 
         # Get tasks
-        tasks = self.session.exec(
-            select(Todo).where(
-                Todo.user_id == user_id,
-                Todo.id.in_(task_tags)
-            )
-        ).all()
+        tasks = self.session.exec(select(Todo).where(Todo.user_id == user_id, Todo.id.in_(task_tags))).all()
 
         return tasks
 
@@ -260,17 +239,13 @@ class TagService:
             return []
 
         # Get tag_ids for this task
-        task_tags = self.session.exec(
-            select(TaskTag.tag_id).where(TaskTag.task_id == task_id)
-        ).all()
+        task_tags = self.session.exec(select(TaskTag.tag_id).where(TaskTag.task_id == task_id)).all()
 
         if not task_tags:
             return []
 
         # Get tags
-        tags = self.session.exec(
-            select(Tag).where(Tag.id.in_(task_tags))
-        ).all()
+        tags = self.session.exec(select(Tag).where(Tag.id.in_(task_tags))).all()
 
         return tags
 

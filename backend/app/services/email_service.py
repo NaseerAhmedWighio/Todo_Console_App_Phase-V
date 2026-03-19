@@ -1,16 +1,16 @@
-import smtplib
-import os
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from typing import Optional, Dict
 import logging
+import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 class EmailService:
     """Email service for sending verification and reminder emails"""
-    
+
     def __init__(self):
         # SMTP Configuration
         self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
@@ -19,75 +19,69 @@ class EmailService:
         self.smtp_password = os.getenv("SMTP_PASSWORD", "")
         self.from_email = os.getenv("FROM_EMAIL", self.smtp_username)
         self.use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
-        
-    def send_email(
-        self,
-        to_email: str,
-        subject: str,
-        html_content: str,
-        text_content: Optional[str] = None
-    ) -> bool:
+
+    def send_email(self, to_email: str, subject: str, html_content: str, text_content: Optional[str] = None) -> bool:
         """
         Send an email
-        
+
         Args:
             to_email: Recipient email address
             subject: Email subject
             html_content: HTML content of the email
             text_content: Plain text content (optional)
-            
+
         Returns:
             bool: True if email sent successfully, False otherwise
         """
         if not self.smtp_username or not self.smtp_password:
             logger.error("SMTP credentials not configured")
             return False
-        
+
         try:
             # Create message
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = self.from_email
             msg["To"] = to_email
-            
+
             # Add text content if provided
             if text_content:
                 part1 = MIMEText(text_content, "plain")
                 msg.attach(part1)
-            
+
             # Add HTML content
             part2 = MIMEText(html_content, "html")
             msg.attach(part2)
-            
+
             # Send email
             if self.use_tls:
                 server = smtplib.SMTP(self.smtp_server, self.smtp_port)
                 server.starttls()
             else:
                 server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port)
-            
+
             server.login(self.smtp_username, self.smtp_password)
             server.sendmail(self.from_email, to_email, msg.as_string())
             server.quit()
-            
+
             logger.info(f"Email sent successfully to {to_email}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
             return False
-    
+
     def send_verification_email(self, to_email: str, verification_token: str, verification_url: str) -> bool:
         """
         Send email verification email
-        
+
         Args:
             to_email: Recipient email address
             verification_token: Verification token
             verification_url: Full verification URL
         """
         subject = "Verify Your Email - Todo App Phase V"
-        
+
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -164,7 +158,7 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         text_content = f"""
         Verify Your Email Address
         
@@ -183,9 +177,9 @@ class EmailService:
         ---
         Todo App Phase V &copy; 2026
         """
-        
+
         return self.send_email(to_email, subject, html_content, text_content)
-    
+
     def send_task_reminder_email(
         self,
         to_email: str,
@@ -193,11 +187,11 @@ class EmailService:
         task_title: str,
         task_description: Optional[str],
         due_date: str,
-        priority: str = "medium"
+        priority: str = "medium",
     ) -> bool:
         """
         Send task reminder email
-        
+
         Args:
             to_email: Recipient email address
             user_name: User's name
@@ -206,15 +200,11 @@ class EmailService:
             due_date: Due date formatted string
             priority: Task priority (low, medium, high)
         """
-        priority_colors = {
-            "low": "#10b981",
-            "medium": "#f59e0b",
-            "high": "#ef4444"
-        }
+        priority_colors = {"low": "#10b981", "medium": "#f59e0b", "high": "#ef4444"}
         priority_color = priority_colors.get(priority, "#f59e0b")
-        
+
         subject = f"Task Reminder: {task_title}"
-        
+
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -310,7 +300,7 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         text_content = f"""
         Task Reminder
         
@@ -329,20 +319,20 @@ class EmailService:
         ---
         Todo App Phase V &copy; 2026
         """
-        
+
         return self.send_email(to_email, subject, html_content, text_content)
-    
+
     def send_password_reset_email(self, to_email: str, reset_token: str, reset_url: str) -> bool:
         """
         Send password reset email
-        
+
         Args:
             to_email: Recipient email address
             reset_token: Password reset token
             reset_url: Full reset URL
         """
         subject = "Reset Your Password - Todo App Phase V"
-        
+
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -412,7 +402,7 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         return self.send_email(to_email, subject, html_content)
 
 

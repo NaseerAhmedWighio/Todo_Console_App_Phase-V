@@ -3,15 +3,14 @@ Enhanced Todo Agent using OpenAI Agents SDK with @function_tool decorators.
 Supports all CRUD operations: Create, Read, Update, Delete for tasks and tags.
 Configurable model via environment variables.
 """
-from agents import (
-    Agent, Runner, function_tool,
-    ModelSettings
-)
-from dotenv import find_dotenv, load_dotenv
-from typing import Optional, Dict, Any, List
+
+import json
 import uuid
 from datetime import datetime
-import json
+from typing import Any, Dict, List, Optional
+
+from agents import Agent, ModelSettings, Runner, function_tool
+from dotenv import find_dotenv, load_dotenv
 from sqlmodel import Session, select
 
 # Load environment variables
@@ -19,25 +18,25 @@ load_dotenv(find_dotenv())
 
 # Import from app module
 try:
-    from app.models.todo import Todo
+    from app.database.session import engine
     from app.models.tag import Tag
     from app.models.task_tag import TaskTag
-    from app.database.session import engine
+    from app.models.todo import Todo
     from app.services.mcp_server import MCPServer
 except ImportError:
-    from backend.app.models.todo import Todo
+    from backend.app.database.session import engine
     from backend.app.models.tag import Tag
     from backend.app.models.task_tag import TaskTag
-    from backend.app.database.session import engine
+    from backend.app.models.todo import Todo
     from backend.app.services.mcp_server import MCPServer
 
 # ============ CONFIGURATION ============
 # Import configuration from connection module (centralized config)
 # This sets up the OpenRouter client as the default
 try:
-    from agents_sdk.connection import CHAT_MODEL, API_PROVIDER
+    from agents_sdk.connection import API_PROVIDER, CHAT_MODEL
 except ImportError:
-    from connection import CHAT_MODEL, API_PROVIDER
+    from connection import API_PROVIDER, CHAT_MODEL
 
 # Use model name from connection config
 model_name = CHAT_MODEL
@@ -59,49 +58,44 @@ def get_current_user_id() -> Optional[str]:
 
 # ============ TAG TOOLS ============
 
+
 @function_tool
 def create_tag(name: str, color: str = "#3B82F6", user_id: str = None) -> Dict[str, Any]:
     """
     Create a new tag with name and color.
-    
+
     Args:
         name: Tag name (required)
         color: Hex color code (default: #3B82F6)
         user_id: User ID (auto-injected)
-    
+
     Returns:
         Success status and tag data
     """
     try:
         if not user_id:
             user_id = get_current_user_id()
-        
+
         if not user_id:
             return {"success": False, "message": "User ID required. Please login first.", "error_code": "AUTH_REQUIRED"}
-        
+
         user_uuid = uuid.UUID(user_id)
-        
+
         with Session(engine) as db_session:
-            existing = db_session.exec(
-                select(Tag).where((Tag.name == name) & (Tag.user_id == user_uuid))
-            ).first()
-            
+            existing = db_session.exec(select(Tag).where((Tag.name == name) & (Tag.user_id == user_uuid))).first()
+
             if existing:
                 return {"success": False, "message": f"Tag '{name}' already exists", "error_code": "DUPLICATE"}
-            
+
             new_tag = Tag(name=name, color=color, user_id=user_uuid)
             db_session.add(new_tag)
             db_session.commit()
             db_session.refresh(new_tag)
-            
+
             return {
                 "success": True,
                 "message": f"Tag '{name}' created successfully",
-                "data": {
-                    "id": str(new_tag.id),
-                    "name": new_tag.name,
-                    "color": new_tag.color
-                }
+                "data": {"id": str(new_tag.id), "name": new_tag.name, "color": new_tag.color},
             }
     except ValueError:
         return {"success": False, "message": "Invalid user ID format", "error_code": "INVALID_ID"}
@@ -113,34 +107,29 @@ def create_tag(name: str, color: str = "#3B82F6", user_id: str = None) -> Dict[s
 def list_tags(user_id: str = None) -> Dict[str, Any]:
     """
     List all tags for a user.
-    
+
     Args:
         user_id: User ID (auto-injected)
-    
+
     Returns:
         List of tags
     """
     try:
         if not user_id:
             user_id = get_current_user_id()
-        
+
         if not user_id:
             return {"success": False, "message": "User ID required", "error_code": "AUTH_REQUIRED"}
-        
+
         user_uuid = uuid.UUID(user_id)
-        
+
         with Session(engine) as db_session:
-            tags = db_session.exec(
-                select(Tag).where(Tag.user_id == user_uuid).order_by(Tag.name)
-            ).all()
-            
+            tags = db_session.exec(select(Tag).where(Tag.user_id == user_uuid).order_by(Tag.name)).all()
+
             return {
                 "success": True,
                 "message": f"Found {len(tags)} tags",
-                "data": [
-                    {"id": str(tag.id), "name": tag.name, "color": tag.color}
-                    for tag in tags
-                ]
+                "data": [{"id": str(tag.id), "name": tag.name, "color": tag.color} for tag in tags],
             }
     except Exception as e:
         return {"success": False, "message": f"Failed to list tags: {str(e)}", "error_code": "LIST_FAILED"}
@@ -150,48 +139,48 @@ def list_tags(user_id: str = None) -> Dict[str, Any]:
 def delete_tag(tag_id: str, user_id: str = None) -> Dict[str, Any]:
     """
     Delete a tag permanently. This will also remove the tag from all tasks.
-    
+
     Args:
         tag_id: Tag ID to delete (required)
         user_id: User ID (auto-injected)
-    
+
     Returns:
         Success status
     """
     try:
         if not user_id:
             user_id = get_current_user_id()
-        
+
         if not user_id:
             return {"success": False, "message": "User ID required", "error_code": "AUTH_REQUIRED"}
-        
+
         user_uuid = uuid.UUID(user_id)
         tag_uuid = uuid.UUID(tag_id)
-        
+
         with Session(engine) as db_session:
             tag = db_session.get(Tag, tag_uuid)
-            
+
             if not tag:
                 return {"success": False, "message": "Tag not found", "error_code": "NOT_FOUND"}
-            
+
             if tag.user_id != user_uuid:
-                return {"success": False, "message": "Access denied: You can only delete your own tags", "error_code": "ACCESS_DENIED"}
-            
+                return {
+                    "success": False,
+                    "message": "Access denied: You can only delete your own tags",
+                    "error_code": "ACCESS_DENIED",
+                }
+
             tag_name = tag.name
-            
+
             # Delete all task-tag assignments
             assignments = db_session.exec(select(TaskTag).where(TaskTag.tag_id == tag_uuid)).all()
             for assignment in assignments:
                 db_session.delete(assignment)
-            
+
             db_session.delete(tag)
             db_session.commit()
-            
-            return {
-                "success": True,
-                "message": f"Tag '{tag_name}' deleted successfully",
-                "data": {"id": str(tag_id)}
-            }
+
+            return {"success": True, "message": f"Tag '{tag_name}' deleted successfully", "data": {"id": str(tag_id)}}
     except ValueError:
         return {"success": False, "message": "Invalid ID format", "error_code": "INVALID_ID"}
     except Exception as e:
@@ -202,50 +191,50 @@ def delete_tag(tag_id: str, user_id: str = None) -> Dict[str, Any]:
 def assign_tag_to_task(task_id: str, tag_id: str, user_id: str = None) -> Dict[str, Any]:
     """
     Assign a tag to a task.
-    
+
     Args:
         task_id: Task ID to assign tag to
         tag_id: Tag ID to assign
         user_id: User ID (auto-injected)
-    
+
     Returns:
         Success status
     """
     try:
         if not user_id:
             user_id = get_current_user_id()
-        
+
         if not user_id:
             return {"success": False, "message": "User ID required", "error_code": "AUTH_REQUIRED"}
-        
+
         user_uuid = uuid.UUID(user_id)
         task_uuid = uuid.UUID(task_id)
         tag_uuid = uuid.UUID(tag_id)
-        
+
         with Session(engine) as db_session:
             task = db_session.get(Todo, task_uuid)
             if not task or task.user_id != user_uuid:
                 return {"success": False, "message": "Task not found", "error_code": "NOT_FOUND"}
-            
+
             tag = db_session.get(Tag, tag_uuid)
             if not tag or tag.user_id != user_uuid:
                 return {"success": False, "message": "Tag not found", "error_code": "NOT_FOUND"}
-            
+
             existing = db_session.exec(
                 select(TaskTag).where((TaskTag.task_id == task_uuid) & (TaskTag.tag_id == tag_uuid))
             ).first()
-            
+
             if existing:
                 return {"success": True, "message": "Tag already assigned to task", "error_code": "ALREADY_ASSIGNED"}
-            
+
             assignment = TaskTag(task_id=task_uuid, tag_id=tag_uuid)
             db_session.add(assignment)
             db_session.commit()
-            
+
             return {
                 "success": True,
                 "message": f"Tag '{tag.name}' assigned to task '{task.title}'",
-                "data": {"task_id": str(task_id), "tag_id": str(tag_id)}
+                "data": {"task_id": str(task_id), "tag_id": str(tag_id)},
             }
     except ValueError:
         return {"success": False, "message": "Invalid ID format", "error_code": "INVALID_ID"}
@@ -257,45 +246,45 @@ def assign_tag_to_task(task_id: str, tag_id: str, user_id: str = None) -> Dict[s
 def unassign_tag_from_task(task_id: str, tag_id: str, user_id: str = None) -> Dict[str, Any]:
     """
     Remove a tag from a task.
-    
+
     Args:
         task_id: Task ID to remove tag from
         tag_id: Tag ID to remove
         user_id: User ID (auto-injected)
-    
+
     Returns:
         Success status
     """
     try:
         if not user_id:
             user_id = get_current_user_id()
-        
+
         if not user_id:
             return {"success": False, "message": "User ID required", "error_code": "AUTH_REQUIRED"}
-        
+
         user_uuid = uuid.UUID(user_id)
         task_uuid = uuid.UUID(task_id)
         tag_uuid = uuid.UUID(tag_id)
-        
+
         with Session(engine) as db_session:
             assignment = db_session.exec(
                 select(TaskTag).where((TaskTag.task_id == task_uuid) & (TaskTag.tag_id == tag_uuid))
             ).first()
-            
+
             if not assignment:
                 return {"success": False, "message": "Tag assignment not found", "error_code": "NOT_FOUND"}
-            
+
             task = db_session.get(Todo, task_uuid)
             if not task or task.user_id != user_uuid:
                 return {"success": False, "message": "Access denied", "error_code": "ACCESS_DENIED"}
-            
+
             db_session.delete(assignment)
             db_session.commit()
-            
+
             return {
                 "success": True,
                 "message": "Tag removed from task successfully",
-                "data": {"task_id": str(task_id), "tag_id": str(tag_id)}
+                "data": {"task_id": str(task_id), "tag_id": str(tag_id)},
             }
     except ValueError:
         return {"success": False, "message": "Invalid ID format", "error_code": "INVALID_ID"}
@@ -305,6 +294,7 @@ def unassign_tag_from_task(task_id: str, tag_id: str, user_id: str = None) -> Di
 
 # ============ TASK TOOLS ============
 
+
 @function_tool
 def create_task(
     title: str,
@@ -312,7 +302,7 @@ def create_task(
     priority: Optional[str] = "medium",
     due_date: Optional[str] = None,
     time_str: Optional[str] = None,
-    user_id: Optional[str] = None
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Create a new task with title, description, priority, and due date.
@@ -337,18 +327,21 @@ def create_task(
             return {"success": False, "message": "User ID required. Please login first.", "error_code": "AUTH_REQUIRED"}
 
         # Debug logging
-        print(f"[INFO] create_task: title='{title}', user_id='{effective_user_id}', due_date='{due_date}', time_str='{time_str}', priority='{priority}'")
-        
+        print(
+            f"[INFO] create_task: title='{title}', user_id='{effective_user_id}', due_date='{due_date}', time_str='{time_str}', priority='{priority}'"
+        )
+
         # Parse due_date if it's a relative date string
         due_datetime = None
         if due_date:
             print(f"[DEBUG] create_task: Processing due_date='{due_date}'")
             # Check if due_date is already an ISO date (YYYY-MM-DD)
             import re
-            if re.match(r'^\d{4}-\d{2}-\d{2}$', due_date):
+
+            if re.match(r"^\d{4}-\d{2}-\d{2}$", due_date):
                 # It's already parsed by NLP, use it directly
                 try:
-                    due_datetime = datetime.strptime(due_date, '%Y-%m-%d')
+                    due_datetime = datetime.strptime(due_date, "%Y-%m-%d")
                     due_datetime = due_datetime.replace(hour=12, minute=0, second=0)
                     print(f"[DEBUG] create_task: ISO date parsed: {due_datetime}")
                 except Exception as e:
@@ -361,6 +354,7 @@ def create_task(
 
         # Convert user_id to UUID
         import uuid
+
         user_uuid = uuid.UUID(effective_user_id)
 
         with Session(engine) as db_session:
@@ -370,7 +364,7 @@ def create_task(
                 priority=priority or "medium",
                 due_date=due_datetime,
                 is_completed=False,
-                user_id=user_uuid
+                user_id=user_uuid,
             )
 
             db_session.add(new_task)
@@ -386,8 +380,8 @@ def create_task(
                     "description": new_task.description,
                     "priority": new_task.priority,
                     "due_date": new_task.due_date.isoformat() if new_task.due_date else None,
-                    "completed": new_task.is_completed
-                }
+                    "completed": new_task.is_completed,
+                },
             }
     except ValueError as e:
         print(f"[ERROR] create_task: Invalid user ID format - {e}")
@@ -395,6 +389,7 @@ def create_task(
     except Exception as e:
         print(f"[ERROR] create_task: Failed to create task - {e}")
         import traceback
+
         traceback.print_exc()
         return {"success": False, "message": f"Failed to create task: {str(e)}", "error_code": "CREATE_FAILED"}
 
@@ -405,49 +400,49 @@ def list_tasks(
     priority: Optional[str] = None,
     tag_id: Optional[str] = None,
     limit: int = 50,
-    user_id: str = None
+    user_id: str = None,
 ) -> Dict[str, Any]:
     """
     List tasks with optional filters.
-    
+
     Args:
         status: Filter by status - all/completed/pending (default: all)
         priority: Filter by priority - low/medium/high/urgent
         tag_id: Filter by tag ID
         limit: Maximum results (default: 50)
         user_id: User ID (auto-injected)
-    
+
     Returns:
         List of tasks
     """
     try:
         if not user_id:
             user_id = get_current_user_id()
-        
+
         if not user_id:
             return {"success": False, "message": "User ID required", "error_code": "AUTH_REQUIRED"}
-        
+
         user_uuid = uuid.UUID(user_id)
-        
+
         with Session(engine) as db_session:
             statement = select(Todo).where(Todo.user_id == user_uuid)
-            
+
             if status == "completed":
                 statement = statement.where(Todo.is_completed == True)
             elif status == "pending":
                 statement = statement.where(Todo.is_completed == False)
-            
+
             if priority:
                 statement = statement.where(Todo.priority == priority)
-            
+
             if tag_id:
                 tag_uuid = uuid.UUID(tag_id)
                 tag_statement = select(TaskTag.task_id).where(TaskTag.tag_id == tag_uuid)
                 statement = statement.where(Todo.id.in_(tag_statement))
-            
+
             statement = statement.order_by(Todo.created_at.desc()).limit(limit)
             tasks = db_session.exec(statement).all()
-            
+
             return {
                 "success": True,
                 "message": f"Found {len(tasks)} tasks",
@@ -459,13 +454,14 @@ def list_tasks(
                         "priority": task.priority,
                         "due_date": task.due_date.isoformat() if task.due_date else None,
                         "completed": task.is_completed,
-                        "tags": [
-                            {"id": str(t.tag.id), "name": t.tag.name, "color": t.tag.color}
-                            for t in task.tags
-                        ] if hasattr(task, 'tags') else []
+                        "tags": (
+                            [{"id": str(t.tag.id), "name": t.tag.name, "color": t.tag.color} for t in task.tags]
+                            if hasattr(task, "tags")
+                            else []
+                        ),
                     }
                     for task in tasks
-                ]
+                ],
             }
     except Exception as e:
         return {"success": False, "message": f"Failed to list tasks: {str(e)}", "error_code": "LIST_FAILED"}
@@ -480,11 +476,11 @@ def update_task(
     due_date: Optional[str] = None,
     time_str: Optional[str] = None,
     completed: Optional[bool] = None,
-    user_id: str = None
+    user_id: str = None,
 ) -> Dict[str, Any]:
     """
     Update an existing task.
-    
+
     Args:
         task_id: Task ID to update (required)
         title: New title
@@ -494,26 +490,26 @@ def update_task(
         time_str: Time specification for due date
         completed: Completion status (true/false)
         user_id: User ID (auto-injected)
-    
+
     Returns:
         Success status and updated task data
     """
     try:
         if not user_id:
             user_id = get_current_user_id()
-        
+
         if not user_id:
             return {"success": False, "message": "User ID required", "error_code": "AUTH_REQUIRED"}
-        
+
         user_uuid = uuid.UUID(user_id)
         task_uuid = uuid.UUID(task_id)
-        
+
         with Session(engine) as db_session:
             task = db_session.get(Todo, task_uuid)
-            
+
             if not task or task.user_id != user_uuid:
                 return {"success": False, "message": "Task not found", "error_code": "NOT_FOUND"}
-            
+
             # Update fields
             if title is not None:
                 task.title = title
@@ -526,11 +522,11 @@ def update_task(
             if due_date is not None:
                 mcp = MCPServer(None)
                 task.due_date = mcp.parse_natural_language_datetime(due_date, time_str)
-            
+
             db_session.add(task)
             db_session.commit()
             db_session.refresh(task)
-            
+
             return {
                 "success": True,
                 "message": f"Task '{task.title}' updated successfully",
@@ -540,8 +536,8 @@ def update_task(
                     "description": task.description,
                     "priority": task.priority,
                     "due_date": task.due_date.isoformat() if task.due_date else None,
-                    "completed": task.is_completed
-                }
+                    "completed": task.is_completed,
+                },
             }
     except ValueError:
         return {"success": False, "message": "Invalid ID format", "error_code": "INVALID_ID"}
@@ -553,38 +549,38 @@ def update_task(
 def complete_task(task_id: str, user_id: str = None) -> Dict[str, Any]:
     """
     Mark a task as completed.
-    
+
     Args:
         task_id: Task ID to complete (required)
         user_id: User ID (auto-injected)
-    
+
     Returns:
         Success status
     """
     try:
         if not user_id:
             user_id = get_current_user_id()
-        
+
         if not user_id:
             return {"success": False, "message": "User ID required", "error_code": "AUTH_REQUIRED"}
-        
+
         user_uuid = uuid.UUID(user_id)
         task_uuid = uuid.UUID(task_id)
-        
+
         with Session(engine) as db_session:
             task = db_session.get(Todo, task_uuid)
-            
+
             if not task or task.user_id != user_uuid:
                 return {"success": False, "message": "Task not found", "error_code": "NOT_FOUND"}
-            
+
             task.is_completed = True
             db_session.add(task)
             db_session.commit()
-            
+
             return {
                 "success": True,
                 "message": f"Task '{task.title}' marked as completed",
-                "data": {"id": str(task.id), "title": task.title, "completed": True}
+                "data": {"id": str(task.id), "title": task.title, "completed": True},
             }
     except ValueError:
         return {"success": False, "message": "Invalid ID format", "error_code": "INVALID_ID"}
@@ -596,38 +592,38 @@ def complete_task(task_id: str, user_id: str = None) -> Dict[str, Any]:
 def delete_task(task_id: str, user_id: str = None) -> Dict[str, Any]:
     """
     Delete a task permanently.
-    
+
     Args:
         task_id: Task ID to delete (required)
         user_id: User ID (auto-injected)
-    
+
     Returns:
         Success status
     """
     try:
         if not user_id:
             user_id = get_current_user_id()
-        
+
         if not user_id:
             return {"success": False, "message": "User ID required", "error_code": "AUTH_REQUIRED"}
-        
+
         user_uuid = uuid.UUID(user_id)
         task_uuid = uuid.UUID(task_id)
-        
+
         with Session(engine) as db_session:
             task = db_session.get(Todo, task_uuid)
-            
+
             if not task or task.user_id != user_uuid:
                 return {"success": False, "message": "Task not found", "error_code": "NOT_FOUND"}
-            
+
             task_title = task.title
             db_session.delete(task)
             db_session.commit()
-            
+
             return {
                 "success": True,
                 "message": f"Task '{task_title}' deleted successfully",
-                "data": {"id": str(task_id)}
+                "data": {"id": str(task_id)},
             }
     except ValueError:
         return {"success": False, "message": "Invalid ID format", "error_code": "INVALID_ID"}
@@ -636,6 +632,7 @@ def delete_task(task_id: str, user_id: str = None) -> Dict[str, Any]:
 
 
 # ============ AGENT DEFINITION ============
+
 
 def create_todo_agent(model: str = None) -> Agent:
     """
@@ -648,7 +645,7 @@ def create_todo_agent(model: str = None) -> Agent:
 def create_todo_agent_with_model(model: str) -> Agent:
     """
     Create a comprehensive todo agent with a specific model.
-    
+
     Args:
         model: The model name to use (e.g., 'meta-llama/llama-3.2-3b-instruct:free')
     """
@@ -658,12 +655,12 @@ def create_todo_agent_with_model(model: str) -> Agent:
 def _create_agent_with_model(model: str) -> Agent:
     """
     Internal function to create agent with model configuration.
-    
+
     The model parameter accepts OpenRouter model names like:
     - meta-llama/llama-3.2-3b-instruct:free
     - meta-llama/llama-3.1-8b-instruct:free
     - etc.
-    
+
     Since the Agents SDK doesn't support these prefixes directly,
     we use a workaround by setting the model in instructions and
     relying on the global default client configured in connection.py.
@@ -671,7 +668,7 @@ def _create_agent_with_model(model: str) -> Agent:
     # Note: We don't pass model to Agent constructor because the SDK
     # will try to parse the prefix. Instead, we rely on the global
     # default client set in connection.py which handles OpenRouter models.
-    
+
     todo_agent = Agent(
         name="todo_agent",
         instructions=f"""You are a helpful AI task assistant using model {model}.
@@ -723,9 +720,9 @@ When user asks to create a task AND add/assign a tag to it:
             list_tags,
             delete_tag,
             assign_tag_to_task,
-            unassign_tag_from_task
+            unassign_tag_from_task,
         ],
-        model_settings=ModelSettings(temperature=0.7, max_tokens=1000)
+        model_settings=ModelSettings(temperature=0.7, max_tokens=1000),
     )
 
     return todo_agent
@@ -733,11 +730,9 @@ When user asks to create a task AND add/assign a tag to it:
 
 # ============ RUNNER FUNCTION ============
 
+
 async def run_agent_with_user_message(
-    user_message: str,
-    user_id: str,
-    conversation_history: Optional[List[Dict[str, str]]] = None,
-    model: str = None
+    user_message: str, user_id: str, conversation_history: Optional[List[Dict[str, str]]] = None, model: str = None
 ) -> str:
     """
     Run the todo agent with a user message.
@@ -753,7 +748,7 @@ async def run_agent_with_user_message(
     """
     # Set the current user ID for tool injection
     set_current_user_id(user_id)
-    
+
     # Debug logging
     current_uid = get_current_user_id()
     print(f"[INFO] run_agent_with_user_message: user_id='{user_id}', global_user_id='{current_uid}'")
@@ -774,15 +769,9 @@ async def run_agent_with_user_message(
                 input_items.append({"role": msg["role"], "content": msg["content"]})
             input_items.append({"role": "user", "content": user_message})
 
-            result = await Runner.run(
-                agent,
-                input_items
-            )
+            result = await Runner.run(agent, input_items)
         else:
-            result = await Runner.run(
-                agent,
-                user_message
-            )
+            result = await Runner.run(agent, user_message)
 
         # Get the final output
         response_text = result.final_output if result.final_output else ""
@@ -790,27 +779,27 @@ async def run_agent_with_user_message(
         # If no response, try to extract from tool results
         if not response_text or response_text.strip() == "":
             # Check if we have tool call results
-            if hasattr(result, 'tool_calls') and result.tool_calls:
+            if hasattr(result, "tool_calls") and result.tool_calls:
                 # Look for successful tool executions
                 for tool_call in result.tool_calls:
-                    if hasattr(tool_call, 'output') and tool_call.output:
+                    if hasattr(tool_call, "output") and tool_call.output:
                         try:
                             output_data = json.loads(str(tool_call.output))
-                            if output_data.get('success'):
-                                response_text = output_data.get('message', 'Task completed successfully')
+                            if output_data.get("success"):
+                                response_text = output_data.get("message", "Task completed successfully")
                                 break
                         except:
                             pass
-            
+
             # Try different attributes
-            for attr in ['output', 'final_output', 'last_output', 'response']:
+            for attr in ["output", "final_output", "last_output", "response"]:
                 if hasattr(result, attr):
                     val = getattr(result, attr)
                     if val:
                         try:
                             output_data = json.loads(str(val))
-                            if output_data.get('success'):
-                                response_text = output_data.get('message', 'Task completed successfully')
+                            if output_data.get("success"):
+                                response_text = output_data.get("message", "Task completed successfully")
                                 break
                         except:
                             response_text = str(val)
@@ -826,29 +815,28 @@ async def run_agent_with_user_message(
     except Exception as e:
         print(f"Agent run error: {e}")
         import traceback
+
         traceback.print_exc()
         return f"I encountered an error: {str(e)}"
 
 
 # ============ SYNC RUNNER (for testing) ============
 
-def run_agent_sync(
-    user_message: str,
-    user_id: str,
-    model: str = None
-) -> str:
+
+def run_agent_sync(user_message: str, user_id: str, model: str = None) -> str:
     """
     Run the todo agent synchronously (for testing).
-    
+
     Args:
         user_message: The user's input message
         user_id: The user's ID
         model: Optional model override
-    
+
     Returns:
         Agent's response text
     """
     import asyncio
+
     return asyncio.run(run_agent_with_user_message(user_message, user_id, model=model))
 
 
@@ -859,32 +847,29 @@ if __name__ == "__main__":
     print(f"Using API Provider: {API_PROVIDER}")
     print(f"Using Model: {model_name}")
     print()
-    
+
     # Get user ID (for testing, use a fixed UUID)
     test_user_id = "550e8400-e29b-41d4-a716-446655440000"
     set_current_user_id(test_user_id)
-    
+
     agent = create_todo_agent()
-    
+
     while True:
         command = input("\nEnter command (or type your natural language request): ").strip()
-        
-        if command.lower() in ['q', 'quit', 'exit']:
+
+        if command.lower() in ["q", "quit", "exit"]:
             print("Goodbye!")
             break
-        
+
         if not command:
             continue
-        
+
         # Run the agent with the user's input
         print("\nProcessing...")
-        
+
         try:
-            result = Runner.run_sync(
-                agent,
-                command
-            )
-            
+            result = Runner.run_sync(agent, command)
+
             print(f"\n{result.final_output}")
         except Exception as e:
             print(f"\nError: {str(e)}")

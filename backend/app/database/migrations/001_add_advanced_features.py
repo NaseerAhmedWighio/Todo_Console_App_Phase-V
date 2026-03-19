@@ -4,16 +4,12 @@ Created: 2026-02-19
 Description: Creates tables for tags, task_tags, reminders, recurring_tasks, and domain_events
 """
 
-from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, ForeignKey
-from typing import Optional
-from datetime import datetime
-import uuid
 from sqlalchemy import text
 
 
 def upgrade():
     """Apply migration - create new tables"""
-    
+
     # Tags table
     create_tags_sql = """
     CREATE TABLE IF NOT EXISTS tags (
@@ -25,7 +21,7 @@ def upgrade():
         CONSTRAINT unique_user_tag_name UNIQUE (user_id, name)
     );
     """
-    
+
     # Task-Tag join table (many-to-many)
     create_task_tags_sql = """
     CREATE TABLE IF NOT EXISTS task_tags (
@@ -35,7 +31,7 @@ def upgrade():
         PRIMARY KEY (task_id, tag_id)
     );
     """
-    
+
     # Reminders table
     create_reminders_sql = """
     CREATE TABLE IF NOT EXISTS reminders (
@@ -60,7 +56,7 @@ def upgrade():
         )
     );
     """
-    
+
     # Recurring tasks table
     create_recurring_tasks_sql = """
     CREATE TABLE IF NOT EXISTS recurring_tasks (
@@ -91,7 +87,7 @@ def upgrade():
         )
     );
     """
-    
+
     # Domain events table
     create_domain_events_sql = """
     CREATE TABLE IF NOT EXISTS domain_events (
@@ -116,7 +112,7 @@ def upgrade():
         )
     );
     """
-    
+
     # Dapr state table
     create_dapr_state_sql = """
     CREATE TABLE IF NOT EXISTS dapr_state (
@@ -129,9 +125,10 @@ def upgrade():
         PRIMARY KEY (key)
     );
     """
-    
+
     # Execute all table creation statements
     from backend.app.database.session import engine
+
     with engine.connect() as conn:
         conn.execute(text(create_tags_sql))
         conn.execute(text(create_task_tags_sql))
@@ -140,13 +137,14 @@ def upgrade():
         conn.execute(text(create_domain_events_sql))
         conn.execute(text(create_dapr_state_sql))
         conn.commit()
-    
+
     print("✓ Created tables: tags, task_tags, reminders, recurring_tasks, domain_events, dapr_state")
 
 
 def downgrade():
     """Rollback migration - drop new tables"""
     from backend.app.database.session import engine
+
     with engine.connect() as conn:
         conn.execute(text("DROP TABLE IF EXISTS dapr_state CASCADE"))
         conn.execute(text("DROP TABLE IF EXISTS domain_events CASCADE"))
@@ -155,7 +153,7 @@ def downgrade():
         conn.execute(text("DROP TABLE IF EXISTS task_tags CASCADE"))
         conn.execute(text("DROP TABLE IF EXISTS tags CASCADE"))
         conn.commit()
-    
+
     print("✓ Dropped tables: tags, task_tags, reminders, recurring_tasks, domain_events, dapr_state")
 
 

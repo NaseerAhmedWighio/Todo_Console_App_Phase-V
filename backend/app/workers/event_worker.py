@@ -3,10 +3,11 @@ Event Worker
 Celery tasks for event processing and cleanup
 """
 
-from celery import shared_task
-from datetime import datetime, timezone, timedelta
-from sqlmodel import Session, select
 import logging
+from datetime import datetime, timedelta, timezone
+
+from celery import shared_task
+from sqlmodel import Session, select
 
 from ..database.session import engine
 from ..models.event import DomainEvent
@@ -31,9 +32,7 @@ def cleanup_old_events(days_to_keep: int = 30):
 
             # Delete old processed events
             statement = (
-                select(DomainEvent)
-                .where(DomainEvent.processed == True)
-                .where(DomainEvent.created_at < cutoff_date)
+                select(DomainEvent).where(DomainEvent.processed == True).where(DomainEvent.created_at < cutoff_date)
             )
             old_events = session.exec(statement).all()
 
@@ -89,7 +88,7 @@ def retry_failed_events(self):
 
     except Exception as exc:
         logger.error(f"Event retry failed: {exc}")
-        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))
 
 
 @shared_task
@@ -99,7 +98,6 @@ def publish_pending_events():
     Runs every minute as a backup to real-time publishing
     """
     from ..services.event_service import get_event_service
-    from ..events.schemas import KafkaTopics
 
     logger.info("Starting publication of pending events...")
 
@@ -113,6 +111,7 @@ def publish_pending_events():
         for event in unpublished:
             try:
                 import asyncio
+
                 asyncio.run(event_service.publish_event(event))
                 published_count += 1
             except Exception as e:
@@ -125,7 +124,7 @@ def publish_pending_events():
         logger.error(f"Pending event publication failed: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Test the tasks
     print("Testing event worker...")
 

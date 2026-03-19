@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session
-from typing import List, Optional
-from ..database.session import get_session
-from ..models.user import User
-from ..services.search_service import SearchService, get_search_service
-from ..api.todo_routes import get_current_user
 import uuid
 from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlmodel import Session
+
+from ..api.todo_routes import get_current_user
+from ..database.session import get_session
+from ..models.user import User
+from ..services.search_service import SearchService
 
 router = APIRouter(prefix="/api/v1/search", tags=["search"])
 
@@ -27,7 +29,7 @@ def search_tasks(
     limit: int = Query(50, ge=1, le=100, description="Maximum results"),
     offset: int = Query(0, ge=0, description="Result offset"),
     current_user: User = Depends(get_current_user),
-    search_service: SearchService = Depends(get_search_svc)
+    search_service: SearchService = Depends(get_search_svc),
 ):
     """
     Search tasks with full-text search and filters
@@ -43,14 +45,14 @@ def search_tasks(
     parsed_due_date_from = None
     if due_date_from:
         try:
-            parsed_due_date_from = datetime.fromisoformat(due_date_from.replace('Z', '+00:00'))
+            parsed_due_date_from = datetime.fromisoformat(due_date_from.replace("Z", "+00:00"))
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid due_date_from format")
 
     parsed_due_date_to = None
     if due_date_to:
         try:
-            parsed_due_date_to = datetime.fromisoformat(due_date_to.replace('Z', '+00:00'))
+            parsed_due_date_to = datetime.fromisoformat(due_date_to.replace("Z", "+00:00"))
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid due_date_to format")
 
@@ -64,18 +66,12 @@ def search_tasks(
         due_date_from=parsed_due_date_from,
         due_date_to=parsed_due_date_to,
         limit=limit,
-        offset=offset
+        offset=offset,
     )
 
     return {
         "success": True,
-        "data": {
-            "results": results,
-            "total": len(results),
-            "query": q,
-            "limit": limit,
-            "offset": offset
-        }
+        "data": {"results": results, "total": len(results), "query": q, "limit": limit, "offset": offset},
     }
 
 
@@ -91,7 +87,7 @@ def filter_tasks(
     limit: int = Query(50, ge=1, le=100, description="Maximum results"),
     offset: int = Query(0, ge=0, description="Result offset"),
     current_user: User = Depends(get_current_user),
-    search_service: SearchService = Depends(get_search_svc)
+    search_service: SearchService = Depends(get_search_svc),
 ):
     """
     Filter tasks without full-text search
@@ -107,14 +103,14 @@ def filter_tasks(
     parsed_due_date_from = None
     if due_date_from:
         try:
-            parsed_due_date_from = datetime.fromisoformat(due_date_from.replace('Z', '+00:00'))
+            parsed_due_date_from = datetime.fromisoformat(due_date_from.replace("Z", "+00:00"))
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid due_date_from format")
 
     parsed_due_date_to = None
     if due_date_to:
         try:
-            parsed_due_date_to = datetime.fromisoformat(due_date_to.replace('Z', '+00:00'))
+            parsed_due_date_to = datetime.fromisoformat(due_date_to.replace("Z", "+00:00"))
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid due_date_to format")
 
@@ -129,15 +125,7 @@ def filter_tasks(
         sort_by=sort_by,
         sort_order=sort_order,
         limit=limit,
-        offset=offset
+        offset=offset,
     )
 
-    return {
-        "success": True,
-        "data": {
-            "results": results,
-            "total": len(results),
-            "limit": limit,
-            "offset": offset
-        }
-    }
+    return {"success": True, "data": {"results": results, "total": len(results), "limit": limit, "offset": offset}}

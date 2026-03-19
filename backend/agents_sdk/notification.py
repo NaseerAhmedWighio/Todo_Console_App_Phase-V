@@ -1,14 +1,14 @@
 """Notification module for sending real-time updates to clients"""
-import sys
+
 import os
-from pathlib import Path
+import sys
 
 # Add the parent directory to the path to access the main backend modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
+import asyncio
 
 from app.api.websocket_manager import manager as websocket_manager
-import asyncio
-import json
 
 
 async def notify_task_updated(user_id: str, task_data: dict, operation: str):
@@ -25,7 +25,7 @@ async def notify_task_updated(user_id: str, task_data: dict, operation: str):
             "type": "task_update",
             "operation": operation,
             "task": task_data,
-            "timestamp": asyncio.get_event_loop().time()
+            "timestamp": asyncio.get_event_loop().time(),
         }
 
         await websocket_manager.broadcast_to_user(message, user_id)

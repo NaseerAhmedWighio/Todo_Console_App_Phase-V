@@ -4,11 +4,11 @@ Provides pub/sub messaging using Dapr sidecar
 """
 
 import json
-from typing import Dict, Any, Callable, Optional
-from dapr.clients import DaprClient
-from dapr.ext.fastapi import DaprApp
-from contextlib import contextmanager
 import logging
+from contextlib import contextmanager
+from typing import Any, Callable, Dict, Optional
+
+from dapr.clients import DaprClient
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +40,7 @@ class DaprPubSub:
             True if successful
         """
         with self._get_client() as client:
-            client.publish_event(
-                pubsub_name=self.pubsub_name,
-                topic_name=topic,
-                data=json.dumps(data)
-            )
+            client.publish_event(pubsub_name=self.pubsub_name, topic_name=topic, data=json.dumps(data))
             logger.debug(f"Published event to topic {topic}")
             return True
 
@@ -61,11 +57,7 @@ class DaprPubSub:
         """
         with self._get_client() as client:
             for event_data in events:
-                client.publish_event(
-                    pubsub_name=self.pubsub_name,
-                    topic_name=topic,
-                    data=json.dumps(event_data)
-                )
+                client.publish_event(pubsub_name=self.pubsub_name, topic_name=topic, data=json.dumps(event_data))
             logger.debug(f"Published {len(events)} events to topic {topic}")
             return True
 
@@ -80,11 +72,13 @@ class DaprPubSub:
         Returns:
             Decorated handler function
         """
+
         def decorator(func):
             # Register the handler for this topic
             # This is typically used with DaprApp from dapr.ext.fastapi
             logger.debug(f"Registered subscription for topic {topic}")
             return func
+
         return decorator
 
 

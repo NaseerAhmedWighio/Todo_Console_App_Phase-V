@@ -5,7 +5,7 @@ uvicorn[standard]>=0.34.0
 # Database
 sqlmodel>=0.0.31
 sqlalchemy>=2.0.36
-psycopg2-binary>=2.9.11
+psycopg2-binary>=2.9.10
 
 # Validation & Settings
 pydantic>=2.12.5
@@ -28,13 +28,11 @@ openai-agents>=0.6.5
 python-dateutil>=2.8.2
 pytz>=2023.3
 
-# Optional - Event Streaming (requires Docker)
-# kafka-python>=2.0.2
-# dapr-sdk>=1.10.0
-
 # Task Queue (required for reminders & recurring tasks)
 celery>=5.3.0
 redis>=4.5.0
 
-# Legacy package (can be removed)
-# uuid>=1.30
+# Code Linting (for CI/CD)
+ruff>=0.1.6
+black>=23.12.0
+flake8>=7.0.0

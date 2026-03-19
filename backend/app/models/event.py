@@ -1,9 +1,9 @@
-from sqlmodel import SQLModel, Field
-from typing import Optional, Any
-from datetime import datetime
 import uuid
-from sqlalchemy import Column, JSON, JSON as JsonType
-from sqlalchemy.orm import Mapped, mapped_column
+from datetime import datetime
+from typing import Any, Optional
+
+from sqlalchemy import JSON, Column
+from sqlmodel import Field, SQLModel
 
 
 class DomainEventBase(SQLModel):

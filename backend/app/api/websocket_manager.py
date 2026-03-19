@@ -1,10 +1,10 @@
-from fastapi import WebSocket, WebSocketDisconnect
-from typing import Dict, List, Set, Callable, Awaitable
-import json
-from uuid import UUID
-from datetime import datetime
 import asyncio
+import json
 import logging
+from datetime import datetime
+from typing import Dict, List
+
+from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +24,10 @@ class ConnectionManager:
             self.active_connections[user_id] = []
             self.connection_status[user_id] = True
         self.active_connections[user_id].append(websocket)
-        
+
         # Start heartbeat for this connection
         self._start_heartbeat(websocket, user_id)
-        
+
         logger.info(f"[WebSocket] User {user_id} connected. Total connections: {len(self.active_connections[user_id])}")
 
     def disconnect(self, websocket: WebSocket, user_id: str):
@@ -35,11 +35,13 @@ class ConnectionManager:
         if user_id in self.active_connections:
             if websocket in self.active_connections[user_id]:
                 self.active_connections[user_id].remove(websocket)
-                logger.info(f"[WebSocket] User {user_id} disconnected. Remaining connections: {len(self.active_connections[user_id])}")
-            
+                logger.info(
+                    f"[WebSocket] User {user_id} disconnected. Remaining connections: {len(self.active_connections[user_id])}"
+                )
+
             # Cancel heartbeat task
             self._stop_heartbeat(user_id)
-            
+
             if not self.active_connections[user_id]:
                 del self.active_connections[user_id]
                 self.connection_status.pop(user_id, None)
@@ -47,6 +49,7 @@ class ConnectionManager:
 
     def _start_heartbeat(self, websocket: WebSocket, user_id: str):
         """Start heartbeat task for a connection"""
+
         async def heartbeat_loop():
             try:
                 while True:
@@ -94,7 +97,7 @@ class ConnectionManager:
 
         disconnected = []
         message_json = json.dumps(message)
-        
+
         for connection in self.active_connections[user_id]:
             try:
                 await connection.send_text(message_json)
@@ -121,7 +124,7 @@ class ConnectionManager:
             "event": event_type,
             "data": task_data,
             "user_id": str(user_id),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         await self.broadcast_to_user(message, str(user_id))
 
@@ -132,7 +135,7 @@ class ConnectionManager:
             "event": event_type,
             "data": tag_data,
             "user_id": str(user_id),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         await self.broadcast_to_user(message, str(user_id))
 
@@ -143,7 +146,7 @@ class ConnectionManager:
             "event": event_type,
             "data": reminder_data,
             "user_id": str(user_id),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         await self.broadcast_to_user(message, str(user_id))
 
@@ -153,7 +156,7 @@ class ConnectionManager:
             "type": "search_results",
             "data": search_results,
             "user_id": str(user_id),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         await self.broadcast_to_user(message, str(user_id))
 
@@ -165,7 +168,7 @@ class ConnectionManager:
             "message": message_text,
             "data": data or {},
             "user_id": str(user_id),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         await self.broadcast_to_user(message, str(user_id))
 
@@ -176,7 +179,7 @@ class ConnectionManager:
             "error_code": error_code,
             "message": error_message,
             "user_id": str(user_id),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         await self.broadcast_to_user(message, str(user_id))
 

@@ -1,19 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import Optional
-import jwt
-from datetime import datetime
+import asyncio
+import json
 import os
-from dotenv import load_dotenv
-from sqlmodel import Session, select
+from datetime import datetime
+from typing import Optional
 from uuid import UUID
+
+import jwt
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from pathlib import Path
-import json
-import asyncio
+from sqlmodel import Session, select
 
 from ..database.session import get_session
 from ..models.conversation import Conversation
@@ -36,11 +36,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..services.chat_service import ChatService
 
+
 def _get_chat_service(session: Session = Depends(get_session)):
     """Get ChatService instance (lazy import)"""
     from ..services.chat_service import ChatService
+
     mcp_server = MCPServer(session)
     return ChatService(mcp_server)
+
 
 # Security scheme for JWT
 security = HTTPBearer()
@@ -123,24 +126,19 @@ async def chat_endpoint(
     chat_request: ChatRequest,
     current_user: User = Depends(get_user_from_token),
     session: Session = Depends(get_session),
-    chat_service: "ChatService" = Depends(_get_chat_service)
+    chat_service: "ChatService" = Depends(_get_chat_service),
 ):
     """
     Enhanced chat endpoint with comprehensive task management
     """
     # Verify user ID matches
     if current_user.id != UUID(user_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: user ID mismatch"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: user ID mismatch")
 
     try:
         # Process message
         response_message = await chat_service.process_message(
-            user_id=user_id,
-            user_message=chat_request.message,
-            conversation_id=chat_request.conversation_id
+            user_id=user_id, user_message=chat_request.message, conversation_id=chat_request.conversation_id
         )
 
         # Create or retrieve conversation
@@ -150,15 +148,9 @@ async def chat_endpoint(
                 conversation = session.get(Conversation, conversation_uuid)
 
                 if not conversation or str(conversation.user_id) != user_id:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Conversation not found"
-                    )
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
             except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid conversation ID"
-                )
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid conversation ID")
         else:
             conversation = Conversation(user_id=UUID(user_id))
             session.add(conversation)
@@ -166,18 +158,10 @@ async def chat_endpoint(
             session.refresh(conversation)
 
         # Save messages
-        user_message = Message(
-            conversation_id=conversation.id,
-            role="user",
-            content=chat_request.message
-        )
+        user_message = Message(conversation_id=conversation.id, role="user", content=chat_request.message)
         session.add(user_message)
 
-        assistant_message = Message(
-            conversation_id=conversation.id,
-            role="assistant",
-            content=response_message
-        )
+        assistant_message = Message(conversation_id=conversation.id, role="assistant", content=response_message)
         session.add(assistant_message)
 
         # Update conversation
@@ -185,20 +169,12 @@ async def chat_endpoint(
         session.add(conversation)
         session.commit()
 
-        return ChatResponse(
-            conversation_id=str(conversation.id),
-            message=response_message,
-            timestamp=datetime.utcnow()
-        )
+        return ChatResponse(conversation_id=str(conversation.id), message=response_message, timestamp=datetime.utcnow())
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error: {str(e)}"
-        )
-
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error: {str(e)}")
 
 
 @router.get("/{user_id}/conversations", dependencies=[Depends(verify_jwt_token)])
@@ -207,38 +183,27 @@ async def list_user_conversations(
     request: Request,
     user_id: str,
     current_user: User = Depends(get_user_from_token),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     """
     Retrieve all conversations for the authenticated user.
     """
     # Verify that the user_id in the path matches the authenticated user
     if current_user.id != UUID(user_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: user ID mismatch"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: user ID mismatch")
 
     try:
         conversations = session.exec(
-            select(Conversation)
-            .where(Conversation.user_id == current_user.id)
-            .order_by(Conversation.updated_at.desc())
+            select(Conversation).where(Conversation.user_id == current_user.id).order_by(Conversation.updated_at.desc())
         ).all()
 
         return [
-            {
-                "id": str(conv.id),
-                "title": conv.title,
-                "created_at": conv.created_at,
-                "updated_at": conv.updated_at
-            }
+            {"id": str(conv.id), "title": conv.title, "created_at": conv.created_at, "updated_at": conv.updated_at}
             for conv in conversations
         ]
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving conversations: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error retrieving conversations: {str(e)}"
         )
 
 
@@ -249,56 +214,39 @@ async def get_conversation_history(
     user_id: str,
     conversation_id: str,
     current_user: User = Depends(get_user_from_token),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     """
     Retrieve message history for a specific conversation.
     """
     # Verify that the user_id in the path matches the authenticated user
     if current_user.id != UUID(user_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: user ID mismatch"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: user ID mismatch")
 
     try:
         conversation_uuid = UUID(conversation_id)
         conversation = session.get(Conversation, conversation_uuid)
 
         if not conversation or conversation.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conversation not found or access denied"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found or access denied")
 
         messages = session.exec(
-            select(Message)
-            .where(Message.conversation_id == conversation_uuid)
-            .order_by(Message.timestamp.asc())
+            select(Message).where(Message.conversation_id == conversation_uuid).order_by(Message.timestamp.asc())
         ).all()
 
         return {
             "conversation_id": str(conversation.id),
             "title": conversation.title,
             "messages": [
-                {
-                    "id": str(msg.id),
-                    "role": msg.role,
-                    "content": msg.content,
-                    "timestamp": msg.timestamp
-                }
+                {"id": str(msg.id), "role": msg.role, "content": msg.content, "timestamp": msg.timestamp}
                 for msg in messages
-            ]
+            ],
         }
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid conversation ID format"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid conversation ID format")
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving conversation history: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error retrieving conversation history: {str(e)}"
         )
 
 
@@ -309,7 +257,7 @@ async def stream_chat_endpoint(
     user_id: str,
     chat_request: ChatRequest,
     current_user: User = Depends(get_user_from_token),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     """
     Streaming chat endpoint for real-time token-by-token responses.
@@ -317,15 +265,13 @@ async def stream_chat_endpoint(
     """
     # Verify user ID matches
     if current_user.id != UUID(user_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: user ID mismatch"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: user ID mismatch")
 
     async def generate_stream():
         try:
             # Import chat service
             from ..services.chat_service import ChatService
+
             mcp_server = MCPServer(session)
             chat_service = ChatService(mcp_server)
 
@@ -334,9 +280,7 @@ async def stream_chat_endpoint(
 
             # Process message
             response_message = await chat_service.process_message(
-                user_id=user_id,
-                user_message=chat_request.message,
-                conversation_id=chat_request.conversation_id
+                user_id=user_id, user_message=chat_request.message, conversation_id=chat_request.conversation_id
             )
 
             # Stream response word by word for real-time effect
@@ -355,9 +299,5 @@ async def stream_chat_endpoint(
     return StreamingResponse(
         generate_stream(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )

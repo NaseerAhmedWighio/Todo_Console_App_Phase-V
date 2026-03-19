@@ -3,10 +3,11 @@ Dapr Jobs API Client
 Schedules and manages jobs using Dapr Jobs API for exact-time reminders
 """
 
-import httpx
-from typing import Dict, Any, Optional
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import Any, Dict, Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +20,7 @@ class DaprJobsClient:
         self.base_url = f"http://localhost:{dapr_http_port}"
 
     async def schedule_job(
-        self,
-        job_name: str,
-        due_time: datetime,
-        data: Dict[str, Any],
-        period: Optional[str] = None
+        self, job_name: str, due_time: datetime, data: Dict[str, Any], period: Optional[str] = None
     ) -> bool:
         """
         Schedule a job using Dapr Jobs API
@@ -39,10 +36,7 @@ class DaprJobsClient:
         """
         url = f"{self.base_url}/v1.0-alpha1/jobs/{job_name}"
 
-        payload = {
-            "dueTime": due_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "data": data
-        }
+        payload = {"dueTime": due_time.strftime("%Y-%m-%dT%H:%M:%SZ"), "data": data}
 
         if period:
             payload["period"] = period

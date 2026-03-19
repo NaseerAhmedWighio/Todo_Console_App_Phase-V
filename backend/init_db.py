@@ -1,11 +1,14 @@
 """
 Initialize Database - Force create all tables
 """
-import sys
-sys.path.insert(0, '.')
 
-from app.database.session import engine, create_db_and_tables
+import sys
+
+sys.path.insert(0, ".")
+
 from sqlalchemy import text
+
+from app.database.session import create_db_and_tables, engine
 
 # Drop all tables using raw SQL to avoid circular dependency issues
 print("Dropping existing tables...")
@@ -13,15 +16,15 @@ try:
     with engine.connect() as conn:
         # Drop tables in reverse order of dependencies
         tables_to_drop = [
-            'messages',
-            'conversations',
-            'task_tags',
-            'tags',
-            'reminders',
-            'recurring_tasks',
-            'todos',
-            'users',
-            'domain_events',
+            "messages",
+            "conversations",
+            "task_tags",
+            "tags",
+            "reminders",
+            "recurring_tasks",
+            "todos",
+            "users",
+            "domain_events",
         ]
         for table_name in tables_to_drop:
             try:
@@ -42,6 +45,7 @@ print("[OK] Database initialized successfully!")
 
 # Verify tables
 from sqlalchemy import inspect
+
 inspector = inspect(engine)
 tables = inspector.get_table_names()
 print(f"Tables created: {tables}")

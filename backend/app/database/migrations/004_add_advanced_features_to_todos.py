@@ -9,17 +9,18 @@ This migration adds the following columns to the todos table:
 Run this migration to update existing todos table schema.
 """
 
-from sqlmodel import SQLModel, Session, text
+from sqlmodel import Session, text
+
 from app.database.session import engine
 
 
 def run_migration():
     """Run the migration to add advanced features columns to todos table"""
-    
+
     with Session(engine) as session:
         # Check if columns already exist before adding them
         # We'll use raw SQL to add the columns if they don't exist
-        
+
         # Add timezone column
         try:
             session.exec(text("""
@@ -29,7 +30,7 @@ def run_migration():
             print("Added 'timezone' column to todos table")
         except Exception as e:
             print(f"Note: {e}")
-        
+
         # Add is_recurring column
         try:
             session.exec(text("""
@@ -39,7 +40,7 @@ def run_migration():
             print("Added 'is_recurring' column to todos table")
         except Exception as e:
             print(f"Note: {e}")
-        
+
         # Add recurring_task_id column
         try:
             session.exec(text("""
@@ -49,7 +50,7 @@ def run_migration():
             print("Added 'recurring_task_id' column to todos table")
         except Exception as e:
             print(f"Note: {e}")
-        
+
         # Add foreign key constraint for recurring_task_id
         try:
             session.exec(text("""
@@ -69,7 +70,7 @@ def run_migration():
             print("Added foreign key constraint for 'recurring_task_id'")
         except Exception as e:
             print(f"Note: {e}")
-        
+
         session.commit()
         print("Migration 004 completed successfully!")
 

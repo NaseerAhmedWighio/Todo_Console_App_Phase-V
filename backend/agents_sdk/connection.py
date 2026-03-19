@@ -2,9 +2,11 @@
 Configuration for AI Agents SDK with OpenRouter.
 Supports OpenRouter free models.
 """
-from dotenv import load_dotenv
+
 import os
-from agents import AsyncOpenAI, set_default_openai_client, set_tracing_disabled, set_default_openai_api
+
+from agents import AsyncOpenAI, set_default_openai_api, set_default_openai_client, set_tracing_disabled
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -29,6 +31,6 @@ set_tracing_disabled(True)
 set_default_openai_api("chat_completions")
 
 # Export for use in other modules
-__all__ = ['external_client', 'CHAT_MODEL', 'API_PROVIDER']
+__all__ = ["external_client", "CHAT_MODEL", "API_PROVIDER"]
 
 print(f"[OK] Agents SDK configured: Provider={API_PROVIDER}, Model={CHAT_MODEL}")
