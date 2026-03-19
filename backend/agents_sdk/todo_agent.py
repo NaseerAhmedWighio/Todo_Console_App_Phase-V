@@ -338,7 +338,7 @@ def create_task(
         effective_user_id = user_id or get_current_user_id()
 
         if not effective_user_id:
-            print(f"[ERROR] create_task: No user_id provided and no global user_id set")
+            print("[ERROR] create_task: No user_id provided and no global user_id set")
             return {"success": False, "message": "User ID required. Please login first.", "error_code": "AUTH_REQUIRED"}
 
         # Debug logging

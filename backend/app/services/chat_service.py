@@ -257,7 +257,7 @@ class ChatService:
                                 response += f" with tag '{details['tag_name']}' (already assigned)"
                             else:
                                 logger.error(f"Failed to assign tag: {assign_result}")
-                                response += f" [Tag creation OK, assignment failed]"
+                                response += " [Tag creation OK, assignment failed]"
                         else:
                             logger.error(f"Could not find tag ID for: {details['tag_name']}")
                     else:

@@ -14,7 +14,7 @@ if not DATABASE_URL:
     print("ERROR: DATABASE_URL not found in .env file")
     exit(1)
 
-print(f"Connecting to database...")
+print("Connecting to database...")
 
 # Parse connection URL
 # Format: postgresql://user:password@host/dbname?sslmode=require

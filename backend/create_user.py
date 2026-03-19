@@ -40,9 +40,9 @@ try:
         print(f"\nLogin credentials:")
         print(f"  Email:    {email}")
         print(f"  Password: {password}")
-        print(f"\nYou can now login at: http://localhost:3000/login")
+        print("\nYou can now login at: http://localhost:3000/login")
     else:
-        print(f"\n❌ Failed to create account!")
+        print("\n❌ Failed to create account!")
         print(f"Error: {result.get('detail', 'Unknown error')}")
         print(f"Full response: {json.dumps(result, indent=2)}")
         
