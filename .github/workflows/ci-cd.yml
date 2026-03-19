@@ -71,10 +71,15 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-asyncio
           # Run tests (exit code 5 = no tests found, which is OK for now)
+          set +e
           pytest --cov=. --cov-report=xml --ignore=agents_sdk
-          if [ $? -eq 5 ]; then
+          test_result=$?
+          set -e
+          if [ "$test_result" -eq 5 ]; then
             echo "No tests found, skipping test step"
             exit 0
+          elif [ "$test_result" -ne 0 ]; then
+            exit $test_result
           fi
 
       - uses: actions/setup-node@v4
