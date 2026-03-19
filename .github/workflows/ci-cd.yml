@@ -23,6 +23,10 @@ on:
 
   workflow_dispatch:
 
+permissions:
+  security-events: write
+  contents: read
+
 env:
   DOCKERHUB_USERNAME: naseerahmedwighio
   BACKEND_IMAGE: todo-console-app-v-backend
@@ -193,9 +197,18 @@ jobs:
           format: 'sarif'
           output: 'backend-trivy.sarif'
 
+      - name: Check if backend SARIF exists
+        id: check-backend-sarif
+        run: |
+          if [ -f backend-trivy.sarif ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload backend scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: steps.check-backend-sarif.outputs.exists == 'true'
         with:
           sarif_file: 'backend-trivy.sarif'
 
@@ -206,9 +219,18 @@ jobs:
           format: 'sarif'
           output: 'frontend-trivy.sarif'
 
+      - name: Check if frontend SARIF exists
+        id: check-frontend-sarif
+        run: |
+          if [ -f frontend-trivy.sarif ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload frontend scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: steps.check-frontend-sarif.outputs.exists == 'true'
         with:
           sarif_file: 'frontend-trivy.sarif'
 
