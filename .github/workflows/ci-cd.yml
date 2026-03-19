@@ -196,39 +196,67 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy backend to Oracle server
-        uses: appleboy/ssh-action@master
+      - name: Copy docker-compose files to server
+        uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            echo "🚀 Starting backend deployment..."
-            cd /var/www/app
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ env.DOCKERHUB_USERNAME }} --password-stdin
-            docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:latest
-            docker compose -f docker-compose.backend.yml down
-            docker compose -f docker-compose.backend.yml up -d
-            docker image prune -f
-            docker logout
-            echo "✅ Backend deployment completed!"
+          key: ${{ secrets.DEPLOY_KEY }}
+          source: "docker-compose.backend.yml,docker-compose.frontend.yml"
+          target: "/var/www/app"
+          strip_components: 1
 
-      - name: Deploy frontend to Oracle server
+      - name: Deploy to Oracle server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_KEY }}
+          key: ${{ secrets.DEPLOY_KEY }}
           script: |
-            echo "🚀 Starting frontend deployment..."
+            echo "🚀 Starting deployment..."
             cd /var/www/app
+
+            # Create .env file from secrets (with defaults for optional values)
+            cat > .env << EOF
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+            SMTP_SERVER=${{ secrets.SMTP_SERVER || 'smtp.gmail.com' }}
+            SMTP_PORT=${{ secrets.SMTP_PORT || '587' }}
+            SMTP_USE_TLS=${{ secrets.SMTP_USE_TLS || 'true' }}
+            SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            FROM_EMAIL=${{ secrets.FROM_EMAIL }}
+            FRONTEND_URL=http://${{ secrets.SERVER_IP }}:3000
+            API_PROVIDER=${{ secrets.API_PROVIDER || 'openrouter' }}
+            CHAT_MODEL=${{ secrets.CHAT_MODEL || 'meta-llama/llama-3.2-3b-instruct:free' }}
+            EOF
+
+            # Login to Docker Hub
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ env.DOCKERHUB_USERNAME }} --password-stdin
+
+            # Pull latest images
+            docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:latest
             docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:latest
-            docker compose -f docker-compose.frontend.yml down
-            docker compose -f docker-compose.frontend.yml up -d
+
+            # Stop existing containers
+            docker compose -f docker-compose.backend.yml down
+
+            # Start all services (backend + frontend + infrastructure)
+            docker compose -f docker-compose.backend.yml up -d
+
+            # Wait for services to be healthy
+            echo "⏳ Waiting for services to start..."
+            sleep 45
+
+            # Show running containers
+            docker ps -a
+
+            # Cleanup
             docker image prune -f
             docker logout
-            echo "✅ Frontend deployment completed!"
+
+            echo "✅ Deployment completed successfully!"
 
   notify:
     runs-on: ubuntu-latest
