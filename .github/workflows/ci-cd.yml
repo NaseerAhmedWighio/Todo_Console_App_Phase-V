@@ -189,31 +189,50 @@ jobs:
         with:
           image-ref: ${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ needs.build-frontend.outputs.tag }}
 
-  deploy-kubernetes:
+  deploy-server:
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend]
-    if: github.ref == 'refs/heads/master' && github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
 
-      - uses: azure/setup-kubectl@v3
+      - name: Deploy backend to Oracle server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            echo "🚀 Starting backend deployment..."
+            cd /var/www/app
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ env.DOCKERHUB_USERNAME }} --password-stdin
+            docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:latest
+            docker compose -f docker-compose.backend.yml down
+            docker compose -f docker-compose.backend.yml up -d
+            docker image prune -f
+            docker logout
+            echo "✅ Backend deployment completed!"
 
-      - run: |
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
-          export KUBECONFIG=kubeconfig
-
-      - run: |
-          helm upgrade --install backend ./k8s/helm/backend \
-            --set image.repository=${{ env.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }} \
-            --set image.tag=${{ needs.build-backend.outputs.tag }}
-
-          helm upgrade --install frontend ./k8s/helm/frontend \
-            --set image.repository=${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }} \
-            --set image.tag=${{ needs.build-frontend.outputs.tag }}
+      - name: Deploy frontend to Oracle server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            echo "🚀 Starting frontend deployment..."
+            cd /var/www/app
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ env.DOCKERHUB_USERNAME }} --password-stdin
+            docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:latest
+            docker compose -f docker-compose.frontend.yml down
+            docker compose -f docker-compose.frontend.yml up -d
+            docker image prune -f
+            docker logout
+            echo "✅ Frontend deployment completed!"
 
   notify:
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]
+    needs: [deploy-server]
     if: always()
     steps:
       - run: echo "Pipeline finished 🚀"
