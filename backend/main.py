@@ -1,8 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from sqlmodel import SQLModel
-from app.database.session import engine, create_db_and_tables
+from app.database.session import create_db_and_tables
 from app.api.todo_routes import router as todo_router
 from app.api.auth_routes import router as auth_router
 from app.api.chat_routes import router as chat_router, limiter as chat_limiter

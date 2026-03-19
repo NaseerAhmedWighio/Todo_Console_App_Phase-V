@@ -2,7 +2,6 @@
 Task and TaskList models for the Todo App Core Functionality.
 """
 from typing import List, Optional
-import uuid
 from datetime import datetime
 
 

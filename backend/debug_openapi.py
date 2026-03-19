@@ -2,7 +2,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from app.api.todo_routes import TodoCreate, TodoResponse, TodoUpdate
+from app.api.todo_routes import TodoCreate, TodoResponse
 from app.models.todo import Todo
 
 print("Testing TodoCreate schema...")
@@ -34,4 +34,4 @@ for field_name, field_info in Todo.model_fields.items():
         print(f"  {field_name}: default_factory={field_info.default_factory} (callable: {callable(field_info.default_factory)})")
         import asyncio
         if asyncio.iscoroutinefunction(field_info.default_factory):
-            print(f"    *** THIS IS A COROUTINE! ***")
+            print("    *** THIS IS A COROUTINE! ***")

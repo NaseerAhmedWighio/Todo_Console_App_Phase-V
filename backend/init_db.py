@@ -5,7 +5,6 @@ import sys
 sys.path.insert(0, '.')
 
 from app.database.session import engine, create_db_and_tables
-from sqlmodel import SQLModel
 from sqlalchemy import text
 
 # Drop all tables using raw SQL to avoid circular dependency issues

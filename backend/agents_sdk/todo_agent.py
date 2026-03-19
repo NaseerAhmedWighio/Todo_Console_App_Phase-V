@@ -4,16 +4,13 @@ Supports all CRUD operations: Create, Read, Update, Delete for tasks and tags.
 Configurable model via environment variables.
 """
 from agents import (
-    Agent, RunContextWrapper, Runner, function_tool,
-    set_default_openai_api, set_default_openai_client, set_tracing_disabled,
+    Agent, Runner, function_tool,
     ModelSettings
 )
 from dotenv import find_dotenv, load_dotenv
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
 import uuid
 from datetime import datetime
-import os
 import json
 from sqlmodel import Session, select
 
@@ -23,14 +20,12 @@ load_dotenv(find_dotenv())
 # Import from app module
 try:
     from app.models.todo import Todo
-    from app.models.user import User
     from app.models.tag import Tag
     from app.models.task_tag import TaskTag
     from app.database.session import engine
     from app.services.mcp_server import MCPServer
 except ImportError:
     from backend.app.models.todo import Todo
-    from backend.app.models.user import User
     from backend.app.models.tag import Tag
     from backend.app.models.task_tag import TaskTag
     from backend.app.database.session import engine
@@ -40,9 +35,9 @@ except ImportError:
 # Import configuration from connection module (centralized config)
 # This sets up the OpenRouter client as the default
 try:
-    from agents_sdk.connection import external_client, CHAT_MODEL, API_PROVIDER
+    from agents_sdk.connection import CHAT_MODEL, API_PROVIDER
 except ImportError:
-    from connection import external_client, CHAT_MODEL, API_PROVIDER
+    from connection import CHAT_MODEL, API_PROVIDER
 
 # Use model name from connection config
 model_name = CHAT_MODEL
@@ -108,7 +103,7 @@ def create_tag(name: str, color: str = "#3B82F6", user_id: str = None) -> Dict[s
                     "color": new_tag.color
                 }
             }
-    except ValueError as e:
+    except ValueError:
         return {"success": False, "message": "Invalid user ID format", "error_code": "INVALID_ID"}
     except Exception as e:
         return {"success": False, "message": f"Failed to create tag: {str(e)}", "error_code": "CREATE_FAILED"}
@@ -768,7 +763,6 @@ async def run_agent_with_user_message(
     agent_model = model if model else model_name
 
     # Create agent with model settings that specify the model
-    from agents import ModelSettings
     agent = create_todo_agent_with_model(agent_model)
 
     try:

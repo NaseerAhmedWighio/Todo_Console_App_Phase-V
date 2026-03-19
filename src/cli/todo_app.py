@@ -6,8 +6,6 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from services.task_service import TaskService
-from models.task import Task
-from typing import List
 
 
 class TodoApp:
