@@ -161,6 +161,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=http://80.225.210.147:7860
 
       # Generate SBOM for backend
       - uses: anchore/sbom-action@v0
@@ -290,6 +292,7 @@ jobs:
             API_PROVIDER=${{ secrets.API_PROVIDER || 'openrouter' }}
             CHAT_MODEL=${{ secrets.CHAT_MODEL || 'meta-llama/llama-3.2-3b-instruct:free' }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            NEXT_PUBLIC_API_BASE_URL=http://${{ secrets.SERVER_IP }}:7860
             EOF
 
             # Login to Docker Hub
@@ -304,6 +307,10 @@ jobs:
             # Stop existing containers
             echo "🛑 Stopping existing containers..."
             docker compose down
+
+            # Rebuild frontend with correct API URL
+            echo "🔨 Rebuilding frontend with correct API URL..."
+            docker compose build frontend --build-arg NEXT_PUBLIC_API_BASE_URL=http://${{ secrets.SERVER_IP }}:7860
 
             # Start all services
             echo "▶️  Starting all services..."
@@ -320,6 +327,13 @@ jobs:
             # Show logs for debugging
             echo "📋 Recent logs:"
             docker compose logs --tail=20
+
+            # Verify health
+            echo "🏥 Checking service health..."
+            echo "Backend Health:"
+            curl -s http://localhost:7860/health || echo "Backend not responding"
+            echo "Frontend Health:"
+            curl -s http://localhost:3000/health || echo "Frontend not responding"
 
             # Cleanup old images
             echo "🧹 Cleaning up old images..."
