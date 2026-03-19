@@ -192,7 +192,7 @@ jobs:
   deploy-kubernetes:
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
 
@@ -213,7 +213,7 @@ jobs:
 
   notify:
     runs-on: ubuntu-latest
-    needs: deploy-kubernetes
+    needs: [build-backend, build-frontend]
     if: always()
     steps:
       - run: echo "Pipeline finished 🚀"
