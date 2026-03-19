@@ -211,6 +211,7 @@ jobs:
         if: steps.check-backend-sarif.outputs.exists == 'true'
         with:
           sarif_file: 'backend-trivy.sarif'
+          category: 'trivy-backend'
 
       - name: Scan frontend image
         uses: aquasecurity/trivy-action@master
@@ -233,6 +234,7 @@ jobs:
         if: steps.check-frontend-sarif.outputs.exists == 'true'
         with:
           sarif_file: 'frontend-trivy.sarif'
+          category: 'trivy-frontend'
 
   deploy-server:
     runs-on: ubuntu-latest
