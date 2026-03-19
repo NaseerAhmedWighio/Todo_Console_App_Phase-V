@@ -203,7 +203,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           source: "docker-compose.backend.yml,docker-compose.frontend.yml"
-          target: "/var/www/app"
+          target: "/home/opc/app"
           strip_components: 1
 
       - name: Deploy to Oracle server
@@ -214,7 +214,7 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             echo "🚀 Starting deployment..."
-            cd /var/www/app
+            cd /home/opc/app
 
             # Create .env file from secrets (with defaults for optional values)
             cat > .env << EOF

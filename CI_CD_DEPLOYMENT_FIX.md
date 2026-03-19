@@ -76,7 +76,7 @@ The SSH deployment step was failing because:
 └─────────────────────────────────────────────────────────────┘
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Oracle Server (/var/www/app)                               │
+│  Oracle Server (/home/opc/app)                               │
 ├─────────────────────────────────────────────────────────────┤
 │  docker-compose.backend.yml (deployed)                      │
 │  docker-compose.frontend.yml (available)                    │
@@ -96,7 +96,7 @@ The SSH deployment step was failing because:
 If you want to deploy manually on the Oracle server:
 
 ```bash
-cd /var/www/app
+cd /home/opc/app
 
 # Create .env file
 cat > .env << EOF
@@ -145,7 +145,7 @@ ssh -i ~/.ssh/your-key <SERVER_USER>@<SERVER_IP>
 ### Docker Compose Files Not Found
 ```bash
 # Check files exist on server
-ls -la /var/www/app/docker-compose*.yml
+ls -la /home/opc/app/docker-compose*.yml
 ```
 
 ### Containers Not Starting
@@ -157,7 +157,7 @@ docker compose -f docker-compose.backend.yml logs -f
 ### Environment Variables Missing
 ```bash
 # Check .env file
-cat /var/www/app/.env
+cat /home/opc/app/.env
 ```
 
 ## Next Steps
