@@ -1,26 +1,43 @@
-# Production Docker Compose - Todo App Phase V
-# Uses Neon Serverless PostgreSQL, Kafka, and Redis
-# Supports both local build and DockerHub images
-# 
+# Production Docker Compose - Todo App Phase V with Dapr
+# Uses Neon Serverless PostgreSQL, Kafka, Redis, and Dapr Sidecar
+#
 # Local Development: docker-compose up --build
 # Production Deploy: docker-compose pull && docker-compose up -d
-# 
+#
 # Images: naseerahmedwighio/todo-console-app-v-backend
 #         naseerahmedwighio/todo-console-app-v-frontend
+#
+# Services:
+#   - Backend (FastAPI) with Dapr sidecar
+#   - Frontend (Next.js)
+#   - Kafka (Event Streaming)
+#   - Zookeeper (Kafka Coordination)
+#   - Redis (Celery Broker & Dapr State)
+#   - Dapr Sidecar (Notification Scheduling)
+#
+# Ports:
+#   - Frontend: http://localhost:3000
+#   - Backend API: http://localhost:7860
+#   - Dapr API: http://localhost:3500
+#   - Kafka: localhost:9092
+#   - Redis: localhost:6379
+#   - Zookeeper: localhost:2181
 
 services:
+  # ============================================
+  # Backend - FastAPI Application
+  # ============================================
   backend:
-    # Production: uses pre-built image from DockerHub
     image: naseerahmedwighio/todo-console-app-v-backend:latest
     # Local dev: uncomment build section to build locally
-    # build:
-    #   context: ./backend
-    #   dockerfile: Dockerfile
-    #   args:
-    #     - PIP_DEFAULT_TIMEOUT=100
-    #     - PIP_RETRIES=5
-    #   platforms:
-    #     - linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        - PIP_DEFAULT_TIMEOUT=100
+        - PIP_RETRIES=5
+      platforms:
+        - linux/amd64
     container_name: todo-backend
     ports:
       - "7860:7860"
@@ -42,6 +59,10 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - FROM_EMAIL=${FROM_EMAIL}
       - FRONTEND_URL=${FRONTEND_URL:-http://todo-frontend:3000}
+      # Dapr Configuration
+      - DAPR_HTTP_PORT=3500
+      - DAPR_GRPC_PORT=50001
+      - DAPR_PUBSUB_NAME=kafka-pubsub
     env_file:
       - .env
     depends_on:
@@ -58,28 +79,78 @@ services:
       start_period: 60s
     networks:
       - todo-network
+    volumes:
+      # Mount Dapr components for local development
+      - ./dapr/components:/app/dapr/components:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+  # ============================================
+  # Dapr Sidecar - Runs alongside backend
+  # ============================================
+  dapr-sidecar:
+    image: daprio/daprd:1.12.0
+    container_name: todo-dapr-sidecar
+    command: [
+      "./daprd",
+      "-app-id", "todo-backend",
+      "-app-port", "7860",
+      "-dapr-http-port", "3500",
+      "-dapr-grpc-port", "50001",
+      "-components-path", "/components",
+      "-resources-path", "/components",
+      "-enable-api-logging", "true",
+      "-log-level", "info"
+    ]
+    volumes:
+      - ./dapr/components:/components:ro
+    depends_on:
+      - backend
+      - kafka
+      - redis
+    ports:
+      - "3500:3500"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3500/v1.0/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - todo-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # Frontend - Next.js Application
+  # ============================================
   frontend:
-    # Production: uses pre-built image from DockerHub
     image: naseerahmedwighio/todo-console-app-v-frontend:latest
     # Local dev: uncomment build section to build locally
-    # build:
-    #   context: ./frontend
-    #   dockerfile: Dockerfile
-    #   args:
-    #     - NPM_CONFIG_RETRY=5
-    #     - NPM_CONFIG_FETCH_RETRIES=5
-    #     - NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=10000
-    #     - NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=60000
-    #     - NEXT_PUBLIC_API_BASE_URL=http://localhost:7860
-    #   platforms:
-    #     - linux/amd64
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NPM_CONFIG_RETRY=5
+        - NPM_CONFIG_FETCH_RETRIES=5
+        - NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=10000
+        - NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=60000
+        - NEXT_PUBLIC_API_BASE_URL=http://localhost:7860
+      platforms:
+        - linux/amd64
     container_name: todo-frontend
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_BASE_URL=http://80.225.210.147:7860
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:7860}
     depends_on:
       backend:
         condition: service_healthy
@@ -92,8 +163,15 @@ services:
       start_period: 60s
     networks:
       - todo-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # Zookeeper for Kafka
+  # ============================================
+  # Zookeeper - Kafka Coordination
+  # ============================================
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: zookeeper
@@ -107,10 +185,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - todo-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # Kafka for event streaming
+  # ============================================
+  # Kafka - Event Streaming for Notifications
+  # ============================================
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     container_name: kafka
@@ -127,16 +213,26 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168  # 7 days
+      KAFKA_NUM_PARTITIONS: 3
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 10s
       timeout: 10s
       retries: 5
       start_period: 30s
+    restart: unless-stopped
     networks:
       - todo-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # Redis for Celery broker
+  # ============================================
+  # Redis - Celery Broker & Dapr State Store
+  # ============================================
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -149,12 +245,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - todo-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   todo-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
 volumes:
   redis_data:

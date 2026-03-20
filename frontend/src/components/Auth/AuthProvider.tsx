@@ -20,7 +20,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, requireGoogleEmail?: boolean) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   verifyEmail: (token: string) => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
   logout: () => void;
@@ -73,13 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const register = async (name: string, email: string, password: string, requireGoogleEmail: boolean = false) => {
+  const register = async (name: string, email: string, password: string) => {
     try {
       const response = await apiClient.post('/api/v1/auth/register', {
         name,
         email,
         password,
-        google_email_only: requireGoogleEmail,
       });
 
       const data = response.data;

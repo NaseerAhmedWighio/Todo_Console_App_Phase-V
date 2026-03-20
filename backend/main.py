@@ -13,9 +13,11 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api.auth_routes import router as auth_router
 from app.api.chat_routes import limiter as chat_limiter
 from app.api.chat_routes import router as chat_router
+from app.api.dapr_notification_routes import router as dapr_notification_router
 from app.api.jobs_routes import router as jobs_router
 from app.api.recurring_routes import router as recurring_router
 from app.api.reminder_routes import router as reminder_router
+from app.api.scheduled_notification_routes import router as scheduled_notification_router
 from app.api.search_routes import router as search_router
 from app.api.tag_routes import router as tag_router
 from app.api.todo_routes import router as todo_router
@@ -75,6 +77,8 @@ def create_app():
     app.include_router(recurring_router)
     app.include_router(reminder_router)
     app.include_router(jobs_router)
+    app.include_router(dapr_notification_router)
+    app.include_router(scheduled_notification_router)
 
     # Add WebSocket endpoint directly to the app
     @app.websocket("/ws/{user_id}")

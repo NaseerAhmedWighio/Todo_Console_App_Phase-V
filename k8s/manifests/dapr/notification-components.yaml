@@ -1,0 +1,43 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: scheduled-notifications
+  namespace: default
+spec:
+  type: bindings.cron
+  version: v1
+  metadata:
+  - name: schedule
+    value: "*/1 * * * *"  # Every minute - checks for due notifications
+  - name: direction
+    value: "input"
+scopes:
+- todo-backend
+---
+apiVersion: dapr.io/v1alpha1
+kind: Subscription
+metadata:
+  name: notification-event-subscription
+  namespace: default
+spec:
+  topic: scheduled-notifications
+  route: /dapr/notifications/scheduled
+  pubsubname: kafka-pubsub
+  match: |
+    event.type == "scheduled-notification"
+scopes:
+- todo-backend
+---
+apiVersion: dapr.io/v1alpha1
+kind: Subscription
+metadata:
+  name: recurring-notification-subscription
+  namespace: default
+spec:
+  topic: recurring-notifications
+  route: /dapr/notifications/recurring
+  pubsubname: kafka-pubsub
+  match: |
+    event.type == "recurring-notification"
+scopes:
+- todo-backend

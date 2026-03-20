@@ -1,7 +1,9 @@
+import logging
 import uuid
-from typing import List
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
 from ..api.todo_routes import get_current_user
@@ -9,6 +11,9 @@ from ..database.session import get_session
 from ..models.recurring_task import RecurringTask, RecurringTaskCreate, RecurringTaskResponse, RecurringTaskUpdate
 from ..models.todo import Todo
 from ..models.user import User
+from ..services.email_service import email_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/recurring", tags=["recurring-tasks"])
 
@@ -177,3 +182,209 @@ def list_recurring_tasks(
 
     recurring_tasks = session.exec(statement).all()
     return [RecurringTaskResponse.model_validate(rt) for rt in recurring_tasks]
+
+
+@router.post("/create-with-notifications")
+def create_recurring_task_with_notifications(
+    task_title: str,
+    task_description: Optional[str] = None,
+    recurrence_pattern: str = Query(..., description="Pattern: daily, weekly, monthly, yearly, biweekly, quarterly, pay_bills"),
+    interval: int = Query(1, ge=1, description="Interval between occurrences"),
+    by_weekday: Optional[str] = Query(None, description="Comma-separated weekdays (0-6, 0=Monday)"),
+    by_monthday: Optional[int] = Query(None, ge=1, le=31, description="Day of month (1-31)"),
+    by_month: Optional[str] = Query(None, description="Comma-separated months (1-12)"),
+    notification_time: Optional[datetime] = Query(None, description="Time to send notification (ISO 8601)"),
+    end_condition: str = Query("never", description="End condition: never, after_occurrences, on_date"),
+    end_occurrences: Optional[int] = Query(None, ge=1, description="Number of occurrences before ending"),
+    end_date: Optional[datetime] = Query(None, description="End date for recurring task"),
+    priority: str = Query("medium", description="Task priority: low, medium, high, urgent"),
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """
+    Create a new recurring task with email notifications
+    
+    This endpoint:
+    1. Creates the base task
+    2. Configures recurring pattern
+    3. Sets up email notifications at specified times
+    4. Sends confirmation email to user
+    
+    Example patterns:
+    - Pay bills monthly: pattern=pay_bills, by_monthday=1
+    - Weekly review: pattern=weekly, by_weekday=0 (Monday)
+    - Daily standup: pattern=daily, interval=1
+    - Biweekly team meeting: pattern=biweekly, interval=1
+    """
+    try:
+        # Validate pattern
+        valid_patterns = ["daily", "weekly", "monthly", "yearly", "biweekly", "quarterly", "pay_bills", "custom"]
+        if recurrence_pattern not in valid_patterns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid pattern. Must be one of: {', '.join(valid_patterns)}"
+            )
+        
+        # Validate pattern-specific requirements
+        if recurrence_pattern in ["monthly", "pay_bills", "quarterly"] and not by_monthday:
+            by_monthday = 1  # Default to 1st of month
+            logger.info(f"Defaulting to day 1 for {recurrence_pattern} pattern")
+        
+        if recurrence_pattern == "weekly" and not by_weekday:
+            by_weekday = "0"  # Default to Monday
+        
+        # Create base task
+        now = datetime.now(timezone.utc)
+        base_task = Todo(
+            user_id=current_user.id,
+            title=task_title,
+            description=task_description,
+            priority=priority,
+            is_recurring=True,
+            is_completed=False,
+            notification_sent=False,
+            timezone=current_user.timezone or "UTC",
+        )
+        
+        session.add(base_task)
+        session.commit()
+        session.refresh(base_task)
+        
+        # Create recurring task configuration
+        recurring_task = RecurringTask(
+            task_id=base_task.id,
+            recurrence_pattern=recurrence_pattern,
+            interval=interval,
+            by_weekday=by_weekday,
+            by_monthday=by_monthday,
+            by_month=by_month,
+            end_condition=end_condition,
+            end_occurrences=end_occurrences,
+            end_date=end_date,
+            is_active=True,
+            next_due_date=now,  # Start immediately
+        )
+        
+        session.add(recurring_task)
+        
+        # Create first occurrence if notification_time is provided
+        first_occurrence = None
+        if notification_time:
+            # Ensure timezone
+            if notification_time.tzinfo is None:
+                notification_time = notification_time.replace(tzinfo=timezone.utc)
+            
+            first_occurrence = Todo(
+                user_id=current_user.id,
+                title=f"{task_title} (Recurring)",
+                description=task_description,
+                due_date=notification_time,
+                scheduled_time=notification_time - timedelta(hours=1),  # Notify 1 hour before
+                priority=priority,
+                is_recurring=True,
+                recurring_task_id=recurring_task.id,
+                series_id=recurring_task.id,
+                notification_sent=False,
+                timezone=current_user.timezone or "UTC",
+            )
+            session.add(first_occurrence)
+        
+        session.commit()
+        
+        # Send confirmation email
+        pattern_display = recurrence_pattern.replace("_", " ").title()
+        email_sent = email_service.send_email(
+            to_email=current_user.email,
+            subject=f"Recurring Task Created: {task_title}",
+            html_content=f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                    }}
+                    .container {{
+                        background-color: #f9fafb;
+                        border-radius: 8px;
+                        padding: 30px;
+                        margin: 20px 0;
+                    }}
+                    .success {{
+                        color: #10b981;
+                        font-weight: 600;
+                    }}
+                    .detail {{
+                        background-color: white;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 6px;
+                        padding: 15px;
+                        margin: 15px 0;
+                    }}
+                    .badge {{
+                        display: inline-block;
+                        background-color: #3b82f6;
+                        color: white;
+                        padding: 4px 12px;
+                        border-radius: 4px;
+                        font-size: 12px;
+                        font-weight: 600;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h2 class="success">✓ Recurring Task Created!</h2>
+                    <p>Hello {current_user.name or current_user.email.split("@")[0]},</p>
+                    <p>Your recurring task has been set up successfully.</p>
+                    
+                    <div class="detail">
+                        <strong>Task:</strong> {task_title}<br/>
+                        <span class="badge">{pattern_display}</span><br/><br/>
+                        <strong>Pattern:</strong> {pattern_display} (every {interval} {recurrence_pattern})<br/>
+                        <strong>First Occurrence:</strong> {notification_time.strftime("%B %d, %Y at %I:%M %p %Z") if notification_time else "Started immediately"}<br/>
+                        {f'<strong>End Condition:</strong> {end_condition}' + (f' (after {end_occurrences} occurrences)' if end_occurrences else '') if end_condition != 'never' else ''}
+                    </div>
+                    
+                    <p>You will receive email notifications at the scheduled times. You can manage your recurring tasks from the dashboard.</p>
+                </div>
+            </body>
+            </html>
+            """,
+            text_content=f"""
+            Recurring Task Created!
+            
+            Hello {current_user.name or current_user.email.split("@")[0]},
+            
+            Your recurring task has been set up successfully.
+            
+            Task: {task_title}
+            Pattern: {pattern_display} (every {interval} {recurrence_pattern})
+            First Occurrence: {notification_time.strftime("%B %d, %Y at %I:%M %p %Z") if notification_time else "Started immediately"}
+            
+            You will receive email notifications at the scheduled times.
+            """,
+        )
+        
+        if email_sent:
+            logger.info(f"Sent confirmation email for recurring task {base_task.id} to {current_user.email}")
+        
+        return {
+            "success": True,
+            "message": "Recurring task created with notifications",
+            "task_id": str(base_task.id),
+            "recurring_task_id": str(recurring_task.id),
+            "pattern": recurrence_pattern,
+            "first_occurrence_id": str(first_occurrence.id) if first_occurrence else None,
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create recurring task with notifications: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create recurring task: {str(e)}")

@@ -36,6 +36,11 @@ class Todo(TodoBase, table=True):
     is_recurring: bool = Field(default=False, index=True)
     recurring_task_id: Optional[uuid.UUID] = Field(default=None, foreign_key="recurring_tasks.id", index=True)
 
+    # Scheduled notification fields
+    scheduled_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    notification_sent: bool = Field(default=False, index=True)
+    notified_at: Optional[datetime] = Field(default=None)
+
     # Additional fields that may exist in database
     recurrence_pattern: Optional[str] = Field(default="{}", max_length=500)
     reminder_settings: Optional[str] = Field(default="{}", max_length=1000)
@@ -51,7 +56,10 @@ class Todo(TodoBase, table=True):
 
 
 class TodoCreate(TodoBase):
-    pass
+    scheduled_time: Optional[datetime] = None
+    is_recurring: Optional[bool] = None
+    recurring_task_id: Optional[uuid.UUID] = None
+    timezone: Optional[str] = None
 
 
 class TodoUpdate(SQLModel):
@@ -60,6 +68,8 @@ class TodoUpdate(SQLModel):
     is_completed: Optional[bool] = None
     priority: Optional[str] = None
     due_date: Optional[datetime] = None
+    scheduled_time: Optional[datetime] = None
+    notification_sent: Optional[bool] = None
 
 
 class TodoResponse(TodoBase):
@@ -67,6 +77,12 @@ class TodoResponse(TodoBase):
     user_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
+    scheduled_time: Optional[datetime] = None
+    notification_sent: bool = False
+    notified_at: Optional[datetime] = None
+    is_recurring: bool = False
+    recurring_task_id: Optional[uuid.UUID] = None
+    timezone: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 
 export interface RecurringConfigData {
-  recurrence_pattern: string; // daily, weekly, monthly, yearly
+  recurrence_pattern: string; // daily, weekly, monthly, yearly, biweekly, quarterly, pay_bills
   interval: number;
   by_weekday?: string; // Comma-separated: MO,TU,WE,TH,FR,SA,SU
   by_monthday?: number;
@@ -22,8 +22,11 @@ interface RecurringConfigProps {
 const patternOptions = [
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Bi-Weekly" },
   { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
   { value: "yearly", label: "Yearly" },
+  { value: "pay_bills", label: "Pay Bills (Monthly)" },
 ];
 
 const weekdayOptions = [
@@ -64,9 +67,13 @@ export const RecurringConfig: React.FC<RecurringConfigProps> = ({
   const handlePatternChange = (pattern: string) => {
     const updates: Partial<RecurringConfigData> = { recurrence_pattern: pattern };
     // Clear pattern-specific fields when changing pattern
-    if (pattern !== "weekly") updates.by_weekday = undefined;
-    if (pattern !== "monthly") updates.by_monthday = undefined;
+    if (pattern !== "weekly" && pattern !== "biweekly") updates.by_weekday = undefined;
+    if (pattern !== "monthly" && pattern !== "pay_bills" && pattern !== "quarterly") updates.by_monthday = undefined;
     if (pattern !== "yearly") updates.by_month = undefined;
+    
+    // Set default interval for biweekly
+    if (pattern === "biweekly") updates.interval = 1;
+    
     updateConfig(updates);
   };
 
@@ -100,29 +107,32 @@ export const RecurringConfig: React.FC<RecurringConfigProps> = ({
       </div>
 
       {/* Interval */}
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Every:
-        </label>
-        <input
-          type="number"
-          min="1"
-          max="365"
-          value={config.interval}
-          onChange={(e) => updateConfig({ interval: parseInt(e.target.value) || 1 })}
-          disabled={disabled}
-          className="w-20 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 dark:bg-[#334155] dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-        />
-        <span className="text-sm text-gray-600 dark:text-gray-400">
-          {config.recurrence_pattern === "daily" && "day(s)"}
-          {config.recurrence_pattern === "weekly" && "week(s)"}
-          {config.recurrence_pattern === "monthly" && "month(s)"}
-          {config.recurrence_pattern === "yearly" && "year(s)"}
-        </span>
-      </div>
+      {config.recurrence_pattern !== "biweekly" && config.recurrence_pattern !== "pay_bills" && (
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Every:
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="365"
+            value={config.interval}
+            onChange={(e) => updateConfig({ interval: parseInt(e.target.value) || 1 })}
+            disabled={disabled}
+            className="w-20 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 dark:bg-[#334155] dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+          />
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            {config.recurrence_pattern === "daily" && "day(s)"}
+            {config.recurrence_pattern === "weekly" && "week(s)"}
+            {config.recurrence_pattern === "monthly" && "month(s)"}
+            {config.recurrence_pattern === "quarterly" && "quarter(s)"}
+            {config.recurrence_pattern === "yearly" && "year(s)"}
+          </span>
+        </div>
+      )}
 
       {/* Weekly: Select weekdays */}
-      {config.recurrence_pattern === "weekly" && (
+      {(config.recurrence_pattern === "weekly" || config.recurrence_pattern === "biweekly") && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             On:
@@ -147,8 +157,8 @@ export const RecurringConfig: React.FC<RecurringConfigProps> = ({
         </div>
       )}
 
-      {/* Monthly: Select day of month */}
-      {config.recurrence_pattern === "monthly" && (
+      {/* Monthly/Quarterly/Pay Bills: Select day of month */}
+      {(config.recurrence_pattern === "monthly" || config.recurrence_pattern === "pay_bills" || config.recurrence_pattern === "quarterly") && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             On day:
@@ -164,6 +174,11 @@ export const RecurringConfig: React.FC<RecurringConfigProps> = ({
             disabled={disabled}
             className="w-20 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 dark:bg-[#334155] dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
           />
+          {config.recurrence_pattern === "pay_bills" && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Recommended: Day 1 for monthly bills
+            </p>
+          )}
         </div>
       )}
 

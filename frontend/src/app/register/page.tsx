@@ -6,15 +6,14 @@ import { useAuth } from '../../components/Auth/AuthProvider'
 import ThemeToggle from '../../components/ThemeToggle'
 import {
   validatePassword,
-  validateName,
-  isGoogleEmail
+  validateName
 } from '../../lib/validations/auth'
 
 export default function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [requireGoogleEmail, setRequireGoogleEmail] = useState(false)
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
@@ -29,46 +28,32 @@ export default function RegisterPage() {
     const newEmail = e.target.value
     setEmail(newEmail)
     setError('')
-    
+
     if (!newEmail.trim()) {
       setError('Email is required')
       return false
     }
-    
+
     if (!validateEmailFormat(newEmail)) {
       setError('Please enter a valid email address')
-      return false
-    }
-
-    if (requireGoogleEmail && !isGoogleEmail(newEmail)) {
-      setError('Please use a Google email address (gmail.com or googlemail.com)')
       return false
     }
 
     return true
   }
 
-  const handleRequireGoogleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked
-    setRequireGoogleEmail(checked)
-    // Re-validate email when requirement changes
-    if (email) {
-      handleEmailChange({ target: { value: email } } as ChangeEvent<HTMLInputElement>)
-    }
-  }
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
     setIsSubmitting(true)
-    
+
     // Validate email
     if (!email.trim()) {
       setError('Email is required')
       setIsSubmitting(false)
       return
     }
-    
+
     if (!validateEmailFormat(email)) {
       setError('Please enter a valid email address')
       setIsSubmitting(false)
@@ -96,14 +81,21 @@ export default function RegisterPage() {
       return
     }
 
-    if (requireGoogleEmail && !isGoogleEmail(email)) {
-      setError('Please use a Google email address (gmail.com or googlemail.com)')
+    // Validate confirm password
+    if (!confirmPassword) {
+      setError('Please confirm your password')
+      setIsSubmitting(false)
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
       setIsSubmitting(false)
       return
     }
 
     try {
-      await register(name, email, password, requireGoogleEmail)
+      await register(name, email, password)
       // Auto-verified - redirect directly to dashboard
       router.push('/dashboard')
       router.refresh()
@@ -166,9 +158,6 @@ export default function RegisterPage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#151515] text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
                 placeholder="your@email.com"
               />
-              {email && isGoogleEmail(email) && (
-                <p className="mt-1 text-sm text-green-600 dark:text-green-400">✓ Google email detected</p>
-              )}
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -178,7 +167,7 @@ export default function RegisterPage() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -186,18 +175,21 @@ export default function RegisterPage() {
                 placeholder="••••••••"
               />
             </div>
-            <div className="flex items-center">
-              <input
-                id="requireGoogleEmail"
-                name="requireGoogleEmail"
-                type="checkbox"
-                checked={requireGoogleEmail}
-                onChange={handleRequireGoogleEmailChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="requireGoogleEmail" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                Require Google email (gmail.com or googlemail.com only)
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Confirm Password
               </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#151515] text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                placeholder="••••••••"
+              />
             </div>
           </div>
 
