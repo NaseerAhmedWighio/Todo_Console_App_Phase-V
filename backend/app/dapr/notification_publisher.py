@@ -58,9 +58,7 @@ class NotificationPublisher:
                 data=event,
             )
 
-            logger.info(
-                f"Published scheduled notification event for task {todo.id} to user {user.email}"
-            )
+            logger.info(f"Published scheduled notification event for task {todo.id} to user {user.email}")
             return True
 
         except Exception as e:
@@ -113,9 +111,7 @@ class NotificationPublisher:
                 data=event,
             )
 
-            logger.info(
-                f"Published recurring notification event for task {todo.id} (pattern: {pattern})"
-            )
+            logger.info(f"Published recurring notification event for task {todo.id} (pattern: {pattern})")
             return True
 
         except Exception as e:

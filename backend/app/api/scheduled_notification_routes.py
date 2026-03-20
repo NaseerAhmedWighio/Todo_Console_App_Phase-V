@@ -113,9 +113,7 @@ async def cancel_task_notification(
 
 @router.get("/scheduled")
 async def get_scheduled_notifications(
-    status: Optional[str] = Query(
-        None, description="Filter by notification status (pending, sent)"
-    ),
+    status: Optional[str] = Query(None, description="Filter by notification status (pending, sent)"),
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> List[TodoResponse]:

@@ -188,7 +188,9 @@ def list_recurring_tasks(
 def create_recurring_task_with_notifications(
     task_title: str,
     task_description: Optional[str] = None,
-    recurrence_pattern: str = Query(..., description="Pattern: daily, weekly, monthly, yearly, biweekly, quarterly, pay_bills"),
+    recurrence_pattern: str = Query(
+        ..., description="Pattern: daily, weekly, monthly, yearly, biweekly, quarterly, pay_bills"
+    ),
     interval: int = Query(1, ge=1, description="Interval between occurrences"),
     by_weekday: Optional[str] = Query(None, description="Comma-separated weekdays (0-6, 0=Monday)"),
     by_monthday: Optional[int] = Query(None, ge=1, le=31, description="Day of month (1-31)"),
@@ -203,13 +205,13 @@ def create_recurring_task_with_notifications(
 ) -> dict:
     """
     Create a new recurring task with email notifications
-    
+
     This endpoint:
     1. Creates the base task
     2. Configures recurring pattern
     3. Sets up email notifications at specified times
     4. Sends confirmation email to user
-    
+
     Example patterns:
     - Pay bills monthly: pattern=pay_bills, by_monthday=1
     - Weekly review: pattern=weekly, by_weekday=0 (Monday)
@@ -220,19 +222,16 @@ def create_recurring_task_with_notifications(
         # Validate pattern
         valid_patterns = ["daily", "weekly", "monthly", "yearly", "biweekly", "quarterly", "pay_bills", "custom"]
         if recurrence_pattern not in valid_patterns:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid pattern. Must be one of: {', '.join(valid_patterns)}"
-            )
-        
+            raise HTTPException(status_code=400, detail=f"Invalid pattern. Must be one of: {', '.join(valid_patterns)}")
+
         # Validate pattern-specific requirements
         if recurrence_pattern in ["monthly", "pay_bills", "quarterly"] and not by_monthday:
             by_monthday = 1  # Default to 1st of month
             logger.info(f"Defaulting to day 1 for {recurrence_pattern} pattern")
-        
+
         if recurrence_pattern == "weekly" and not by_weekday:
             by_weekday = "0"  # Default to Monday
-        
+
         # Create base task
         now = datetime.now(timezone.utc)
         base_task = Todo(
@@ -245,11 +244,11 @@ def create_recurring_task_with_notifications(
             notification_sent=False,
             timezone=current_user.timezone or "UTC",
         )
-        
+
         session.add(base_task)
         session.commit()
         session.refresh(base_task)
-        
+
         # Create recurring task configuration
         recurring_task = RecurringTask(
             task_id=base_task.id,
@@ -264,16 +263,16 @@ def create_recurring_task_with_notifications(
             is_active=True,
             next_due_date=now,  # Start immediately
         )
-        
+
         session.add(recurring_task)
-        
+
         # Create first occurrence if notification_time is provided
         first_occurrence = None
         if notification_time:
             # Ensure timezone
             if notification_time.tzinfo is None:
                 notification_time = notification_time.replace(tzinfo=timezone.utc)
-            
+
             first_occurrence = Todo(
                 user_id=current_user.id,
                 title=f"{task_title} (Recurring)",
@@ -288,9 +287,9 @@ def create_recurring_task_with_notifications(
                 timezone=current_user.timezone or "UTC",
             )
             session.add(first_occurrence)
-        
+
         session.commit()
-        
+
         # Send confirmation email
         pattern_display = recurrence_pattern.replace("_", " ").title()
         email_sent = email_service.send_email(
@@ -370,10 +369,10 @@ def create_recurring_task_with_notifications(
             You will receive email notifications at the scheduled times.
             """,
         )
-        
+
         if email_sent:
             logger.info(f"Sent confirmation email for recurring task {base_task.id} to {current_user.email}")
-        
+
         return {
             "success": True,
             "message": "Recurring task created with notifications",
@@ -382,7 +381,7 @@ def create_recurring_task_with_notifications(
             "pattern": recurrence_pattern,
             "first_occurrence_id": str(first_occurrence.id) if first_occurrence else None,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

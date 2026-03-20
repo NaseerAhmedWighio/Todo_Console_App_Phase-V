@@ -86,9 +86,7 @@ class RecurringNotificationService:
                 # Parse weekdays (0=Monday, 6=Sunday)
                 weekdays = [int(d.strip()) for d in by_weekday.split(",")]
                 current_weekday = base_date.weekday()
-                days_ahead = min(
-                    (d - current_weekday) % 7 for d in weekdays
-                ) or 7
+                days_ahead = min((d - current_weekday) % 7 for d in weekdays) or 7
                 next_date = base_date + timedelta(days=days_ahead)
             else:
                 next_date = base_date + timedelta(weeks=interval)
@@ -120,9 +118,7 @@ class RecurringNotificationService:
                 months = [int(m.strip()) for m in by_month.split(",")]
                 current_month = base_date.month
                 # Find next month in the list
-                months_ahead = min(
-                    (m - current_month) % 12 for m in months
-                ) or 12
+                months_ahead = min((m - current_month) % 12 for m in months) or 12
                 next_date = base_date + relativedelta(months=months_ahead)
                 if by_monthday:
                     try:
@@ -137,9 +133,7 @@ class RecurringNotificationService:
 
         return next_date
 
-    def should_send_notification(
-        self, recurring_task: RecurringTask, now: datetime
-    ) -> bool:
+    def should_send_notification(self, recurring_task: RecurringTask, now: datetime) -> bool:
         """
         Check if a notification should be sent for this recurring task
 
@@ -231,9 +225,7 @@ class RecurringNotificationService:
             self.session.commit()
             self.session.refresh(new_todo)
 
-            logger.info(
-                f"Created recurring todo instance {new_todo.id} for {occurrence_date}"
-            )
+            logger.info(f"Created recurring todo instance {new_todo.id} for {occurrence_date}")
 
             return new_todo
 
@@ -242,9 +234,7 @@ class RecurringNotificationService:
             self.session.rollback()
             return None
 
-    def update_recurring_task_next_due(
-        self, recurring_task: RecurringTask, next_date: datetime
-    ) -> None:
+    def update_recurring_task_next_due(self, recurring_task: RecurringTask, next_date: datetime) -> None:
         """
         Update the next due date for a recurring task
 
@@ -257,9 +247,7 @@ class RecurringNotificationService:
         self.session.add(recurring_task)
         self.session.commit()
 
-    def send_recurring_notification(
-        self, todo: Todo, user: User, pattern: str
-    ) -> bool:
+    def send_recurring_notification(self, todo: Todo, user: User, pattern: str) -> bool:
         """
         Send notification for a recurring task instance
 
@@ -272,11 +260,7 @@ class RecurringNotificationService:
             True if email sent successfully
         """
         try:
-            due_date_str = (
-                todo.due_date.strftime("%B %d, %Y at %I:%M %p %Z")
-                if todo.due_date
-                else "No due date"
-            )
+            due_date_str = todo.due_date.strftime("%B %d, %Y at %I:%M %p %Z") if todo.due_date else "No due date"
 
             # Get recurrence pattern display name
             pattern_map = {
@@ -300,9 +284,7 @@ class RecurringNotificationService:
             )
 
             if email_sent:
-                logger.info(
-                    f"Sent recurring notification for task {todo.id} to user {user.id} ({pattern_text})"
-                )
+                logger.info(f"Sent recurring notification for task {todo.id} to user {user.id} ({pattern_text})")
                 todo.notification_sent = True
                 todo.notified_at = datetime.now(timezone.utc)
                 self.session.add(todo)
@@ -367,23 +349,17 @@ class RecurringNotificationService:
 
                         # Send notification if scheduled time has arrived
                         if new_todo.scheduled_time and new_todo.scheduled_time <= now:
-                            if self.send_recurring_notification(
-                                new_todo, user, recurring_task.recurrence_pattern
-                            ):
+                            if self.send_recurring_notification(new_todo, user, recurring_task.recurrence_pattern):
                                 stats["notifications_sent"] += 1
                             else:
                                 stats["failed"] += 1
 
                     # Update next due date
-                    self.update_recurring_task_next_due(
-                        recurring_task, next_occurrence
-                    )
+                    self.update_recurring_task_next_due(recurring_task, next_occurrence)
                     stats["processed"] += 1
 
             except Exception as e:
-                logger.error(
-                    f"Failed to process recurring task {recurring_task.id}: {str(e)}"
-                )
+                logger.error(f"Failed to process recurring task {recurring_task.id}: {str(e)}")
                 stats["failed"] += 1
 
         logger.info(f"Recurring notification processing completed: {stats}")

@@ -64,9 +64,7 @@ class ScheduledNotificationHandler:
 
         return notifications
 
-    def send_notification(
-        self, todo: Todo, user: User, scheduled_time: datetime
-    ) -> bool:
+    def send_notification(self, todo: Todo, user: User, scheduled_time: datetime) -> bool:
         """
         Send notification email for a task
 
@@ -80,11 +78,7 @@ class ScheduledNotificationHandler:
         """
         try:
             # Format due date
-            due_date_str = (
-                todo.due_date.strftime("%B %d, %Y at %I:%M %p %Z")
-                if todo.due_date
-                else "No due date"
-            )
+            due_date_str = todo.due_date.strftime("%B %d, %Y at %I:%M %p %Z") if todo.due_date else "No due date"
 
             # Get recurrence pattern info if applicable
             recurrence_info = ""
@@ -119,9 +113,7 @@ class ScheduledNotificationHandler:
             )
 
             if email_sent:
-                logger.info(
-                    f"Sent scheduled notification for task {todo.id} to user {user.id}{recurrence_info}"
-                )
+                logger.info(f"Sent scheduled notification for task {todo.id} to user {user.id}{recurrence_info}")
 
                 # Mark notification as sent
                 todo.notification_sent = True
@@ -131,21 +123,15 @@ class ScheduledNotificationHandler:
 
                 # For recurring tasks, prepare next occurrence
                 if todo.is_recurring and todo.recurring_task_id:
-                    self._schedule_next_recurring_occurrence(
-                        todo, user, pattern_name
-                    )
+                    self._schedule_next_recurring_occurrence(todo, user, pattern_name)
 
             return email_sent
 
         except Exception as e:
-            logger.error(
-                f"Failed to send scheduled notification for task {todo.id}: {str(e)}"
-            )
+            logger.error(f"Failed to send scheduled notification for task {todo.id}: {str(e)}")
             return False
 
-    def _schedule_next_recurring_occurrence(
-        self, todo: Todo, user: User, pattern_name: Optional[str]
-    ) -> None:
+    def _schedule_next_recurring_occurrence(self, todo: Todo, user: User, pattern_name: Optional[str]) -> None:
         """
         Schedule the next occurrence of a recurring task
 
@@ -202,9 +188,7 @@ class ScheduledNotificationHandler:
                 )
                 self.session.add(next_todo)
                 self.session.commit()
-                logger.info(
-                    f"Scheduled next recurring occurrence for task {todo.id} at {next_due}"
-                )
+                logger.info(f"Scheduled next recurring occurrence for task {todo.id} at {next_due}")
 
         except Exception as e:
             logger.error(f"Failed to schedule next recurring occurrence: {str(e)}")
@@ -253,9 +237,7 @@ class ScheduledNotificationHandler:
             if by_weekday:
                 weekdays = [int(d.strip()) for d in by_weekday.split(",")]
                 current_weekday = base_date.weekday()
-                days_ahead = min(
-                    (d - current_weekday) % 7 for d in weekdays
-                ) or 7
+                days_ahead = min((d - current_weekday) % 7 for d in weekdays) or 7
                 return base_date + timedelta(days=days_ahead)
             return base_date + timedelta(weeks=interval)
 
@@ -285,9 +267,7 @@ class ScheduledNotificationHandler:
             if by_month:
                 months = [int(m.strip()) for m in by_month.split(",")]
                 current_month = base_date.month
-                months_ahead = min(
-                    (m - current_month) % 12 for m in months
-                ) or 12
+                months_ahead = min((m - current_month) % 12 for m in months) or 12
                 next_date = base_date + relativedelta(months=months_ahead)
                 if by_monthday:
                     try:
@@ -311,17 +291,12 @@ class ScheduledNotificationHandler:
         stats = {"total": len(due_notifications), "sent": 0, "failed": 0}
 
         for notification in due_notifications:
-            if self.send_notification(
-                notification["todo"], notification["user"], notification["scheduled_time"]
-            ):
+            if self.send_notification(notification["todo"], notification["user"], notification["scheduled_time"]):
                 stats["sent"] += 1
             else:
                 stats["failed"] += 1
 
-        logger.info(
-            f"Scheduled notification processing completed: {stats['sent']} sent, "
-            f"{stats['failed']} failed"
-        )
+        logger.info(f"Scheduled notification processing completed: {stats['sent']} sent, " f"{stats['failed']} failed")
 
         return stats
 
@@ -352,9 +327,7 @@ def handle_scheduled_notification_event(event_data: Dict[str, Any]) -> Dict[str,
         return {"success": False, "error": str(e)}
 
 
-def handle_recurring_notification_event(
-    event_data: Dict[str, Any]
-) -> Dict[str, Any]:
+def handle_recurring_notification_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle recurring task notification event from Dapr
 
