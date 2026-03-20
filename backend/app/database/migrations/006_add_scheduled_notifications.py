@@ -4,7 +4,6 @@ Adds support for time-based email notifications
 """
 
 import sqlalchemy as sa
-from sqlmodel import SQLModel
 
 
 def upgrade():

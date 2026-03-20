@@ -6,7 +6,6 @@ Supports recurring patterns: daily, weekly, monthly, yearly, custom (e.g., pay b
 """
 
 import logging
-import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 

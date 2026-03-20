@@ -161,32 +161,33 @@ async def send_test_notification_email(
         from ..services.email_service import email_service
 
         # Send test email
+        user_name = current_user.name or "User"
         email_sent = email_service.send_email(
             to_email=current_user.email,
             subject="Test Notification - Todo App Phase V",
-            html_content="""
+            html_content=f"""
             <!DOCTYPE html>
             <html>
             <head>
                 <style>
-                    body {
+                    body {{
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                         line-height: 1.6;
                         color: #333;
                         max-width: 600px;
                         margin: 0 auto;
                         padding: 20px;
-                    }
-                    .container {
+                    }}
+                    .container {{
                         background-color: #f9fafb;
                         border-radius: 8px;
                         padding: 30px;
                         margin: 20px 0;
-                    }
-                    .success {
+                    }}
+                    .success {{
                         color: #10b981;
                         font-weight: 600;
-                    }
+                    }}
                 </style>
             </head>
             <body>
@@ -199,14 +200,14 @@ async def send_test_notification_email(
                 </div>
             </body>
             </html>
-            """.format(user_name=current_user.name or "User"),
+            """,
             text_content=f"""
             Test Email Successful!
-            
-            Hello {current_user.name or 'User'},
-            
+
+            Hello {user_name},
+
             This is a test notification email from your Todo App.
-            
+
             Your email configuration is working correctly. You will now receive task reminders and notifications at your scheduled times.
             """,
         )

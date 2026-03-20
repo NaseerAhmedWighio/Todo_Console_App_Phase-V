@@ -6,7 +6,7 @@ Handles recurring task notifications with pattern support
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from dateutil.relativedelta import relativedelta
 from sqlmodel import Session, select

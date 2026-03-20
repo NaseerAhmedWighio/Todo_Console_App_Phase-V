@@ -4,9 +4,7 @@ Publishes notification events to Dapr pub/sub for scheduled and recurring notifi
 """
 
 import logging
-import json
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import datetime
 
 from ..dapr.pubsub import DaprPubSub
 from ..models.todo import Todo
