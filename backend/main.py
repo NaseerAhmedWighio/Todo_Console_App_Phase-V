@@ -50,6 +50,7 @@ def create_app():
             "http://0.0.0.0:3000",
             "http://localhost:3001",
             "http://127.0.0.1:3001",
+            "http://80.225.210.147:3000",
         ],
         allow_credentials=True,
         allow_methods=["*"],
